@@ -20,10 +20,13 @@ module.exports.connect = function(dbName, options) {
 
 /**
  * Helper function that creates a MongoDB ObjectID given a hex string
- * @param {String}  Object ID as string
+ * @param {String}  Optional hard-coded Object ID as string
  */
 module.exports.createObjectId = function(str) {
-    return new ObjectID(str);
+    if (str)
+        return new ObjectID(str);
+    else
+        return new ObjectID();
 };
 
 
