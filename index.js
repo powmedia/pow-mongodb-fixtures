@@ -162,7 +162,7 @@ Loader.prototype.loadObject = function(data, callback) {
         total++;
         
         this.insertCollection(collectionName, data[collectionName], function(err) {
-            if (err) throw(err);
+            if (err) return callback(err);
             
             done++;
             if (done === total) callback();
