@@ -1,7 +1,7 @@
 pow-mongodb-fixtures
 =================
 
-Simple fixture loader for MongoDB on NodeJS.
+Simple fixture loader for MongoDB on NodeJS.  Makes managing relationships between documents easier.
 
 Fixtures can be in one file, or divided up into separate files for organisation 
 (e.g. one file per model)
@@ -41,6 +41,10 @@ You can also load fixtures as an object where each document is keyed, in case yo
             _id: id(),
             name: 'George Michael',
             father: exports.User.user1._id
+        },
+        user3: {
+            _id: id('4ed2b809d7446b9a0e000014'),
+            name: 'Tobias'
         }
     }
 
@@ -64,10 +68,14 @@ Usage
     //Directories (loads all files in the directory)
     fixtures.load(__dirname + '/fixtures');
 
+
+clearAndLoad()
+--------------
+
+The same as load(), but drops the database before inserting the new documents.
+
+
 Installation
 ------------
 
-Clone / download from [github](https://github.com/powmedia/pow-mongodb-fixtures),
-and then require in your project:
-
-    var fixtures = require('./lib/pow-mongodb-fixtures');
+	npm install pow-mongodb-fixtures
