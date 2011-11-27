@@ -46,23 +46,76 @@ var Loader = function(dbName, options) {
     var host = options.host || 'localhost',
         port = options.port || 27017;
     
-    //Reference to collections that have been emptied; to prevent deleting new data when loading from directory
-    this.clearedCollections = [];
-    
     //Connect
     this.db = new mongo.Db(dbName, new mongo.Server(host, port, {}));
 };
 
 
 /**
- * Clears a collection and inserts the given data as new documents
+ * Inserts data
  *
  * @param {Mixed}       The data to load. This parameter accepts either:
  *                          String: Path to a file or directory to load
  *                          Object: Object literal in the form described in docs
  * @param {Function}    Callback(err)
  */
-Loader.prototype.load = function(data, cb) {	
+Loader.prototype.load = function(fixtures, cb) {
+    var self = this;
+    
+    if (typeof fixtures == 'object') {
+
+        self.loadData(fixtures, cb);
+
+    } else if (typeof fixtures == 'string') {
+
+        //Get the absolute dir path if a relative path was given
+        if (fixtures.substr(0, 1) !== '/') {
+            var parentPath = module.parent.filename.split('/');
+            parentPath.pop();
+            fixtures = parentPath.join('/') + '/' + fixtures;
+        }
+
+        //Determine if fixtures is pointing to a file or directory
+        fs.stat(fixtures, function(err, stats) {
+            if (err) return cb(err);
+
+            if (stats.isDirectory()) {
+                self.loadDir(fixtures, cb);
+            } else { //File
+                self.loadFile(fixtures, cb);
+            }
+        });
+
+    } else { //Unsupported type
+        cb(new Error('Data must be an object, array or string (file or dir path)'));
+    }
+};
+
+
+/**
+ * Clears the database and inserts data
+ *
+ * @param {Mixed}       The data to load. This parameter accepts either:
+ *                          String: Path to a file or directory to load
+ *                          Object: Object literal in the form described in docs
+ * @param {Function}    Callback(err)
+ */
+Loader.prototype.clearAndLoad = function(fixtures, cb) {
+	var self = this;
+	
+	self.db.dropDatabase(function(err, done) {
+		self.load(fixtures, cb);
+	});
+};
+
+
+/**
+ * Inserts the given data (object or array) as new documents
+ *
+ * @param {Object|Array} The data to load
+ * @param {Function}     Callback(err)
+ */
+Loader.prototype.loadData = function(data, cb) {	
 	var self = this,
 	
 	cb = cb || noop;

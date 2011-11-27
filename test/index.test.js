@@ -159,7 +159,7 @@ exports['load'] = {
 	},
 	
 	'file': function(test) {
-		loader.loadFile('./fixtures/archer', function(err) {
+		loader.load('./fixtures/archer.js', function(err) {
 			if (err) return test.done(err);
 			
 			loadCollection('archer', function(err, docs) {
@@ -175,7 +175,7 @@ exports['load'] = {
 	},
 	
 	'directory': function(test) {
-		loader.loadDir('./fixtures', function(err) {
+		loader.load('./fixtures', function(err) {
 			if (err) return test.done(err);
 			
 			async.parallel([
@@ -205,6 +205,37 @@ exports['load'] = {
 		});
 	}
 };
+
+
+exports['clearAndLoad'] = {
+	setUp: function(done) {
+		db.collection('foo', function(err, collection) {
+			if (err) return done(err);
+			
+			collection.insert({ name: 'bar' }, { safe: true }, done);
+		});
+	},
+	
+	'clears existing data': function(test) {
+		var data = {
+			foo: [{ name: 'baz'}]
+		};
+		
+		loader.clearAndLoad(data, function(err) {
+			if (err) return test.done(err);
+			
+			loadCollection('foo', function(err, docs) {
+				if (err) return test.done(err);
+				
+				test.same(1, docs.length);
+				test.same('baz', docs[0].name);
+				
+				test.done();
+			});
+		});
+	}
+};
+
 
 //Close DB connection and end process when done
 exports['exit'] = function(test) {
