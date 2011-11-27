@@ -156,6 +156,22 @@ exports['load'] = {
 				}
 			], test.done);
 		});
+	},
+	
+	'file': function(test) {
+		loader.loadFile('./fixtures/archer', function(err) {
+			if (err) return test.done(err);
+			
+			loadCollection('archer', function(err, docs) {
+				if (err) return next(err);
+				
+				var names = _.pluck(docs, 'name');
+				
+				test.same(names.sort(), ['Sterling', 'Lana', 'Cheryl'].sort());
+				
+				test.done();
+			});
+		});
 	}
 };
 
