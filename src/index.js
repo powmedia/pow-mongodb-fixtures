@@ -62,8 +62,10 @@ var Loader = function(dbName, options) {
  *                          Object: Object literal in the form described in docs
  * @param {Function}    Callback(err)
  */
-Loader.prototype.load = function(data, cb) {
-	var self = this;
+Loader.prototype.load = function(data, cb) {	
+	var self = this,
+	
+	cb = cb || noop;
 	
 	var collectionNames = Object.keys(data);
 	
@@ -86,7 +88,7 @@ Loader.prototype.load = function(data, cb) {
 			db.collection(collectionName, function(err, collection) {
 				if (err) return next(err);
 
-				collection.insert(items, next);
+				collection.insert(items, { safe: true }, next);
 			});
 		}, cb);
 	});
@@ -99,8 +101,8 @@ Loader.prototype.load = function(data, cb) {
  * @param {String}      The full path to the file to load
  * @param {Function}    Optional callback(err)
  */
-Loader.prototype.loadFile = function(file, callback) { 
-    callback = callback || function() {};
+Loader.prototype.loadFile = function(file, cb) { 
+    cb = cb || noop;
     
     if (file.substr(0, 1) !== '/') {
         var parentPath = module.parent.filename.split('/');
@@ -108,7 +110,7 @@ Loader.prototype.loadFile = function(file, callback) {
         file = parentPath.join('/') + '/' + file;
     }
     
-    this.load(require(file), callback);
+    this.load(require(file), cb);
 }
 
 
@@ -120,8 +122,8 @@ Loader.prototype.loadFile = function(file, callback) {
  * @param {String}      The directory path to load e.g. 'data/fixtures' or '../data'
  * @param {Function}    Optional callback(err)
  */
-Loader.prototype.loadDir = function(dir, callback) {
-    callback = callback || function() {};
+Loader.prototype.loadDir = function(dir, cb) {
+    cb = cb || noop;
     
     var self = this;
     
@@ -131,24 +133,13 @@ Loader.prototype.loadDir = function(dir, callback) {
         parentPath.pop();
         dir = parentPath.join('/') + '/' + dir;
     }
-    
-    //Counters for managing callbacks
-    var total = 0,
-        done = 0;
-    
+
     //Load each file in directory
     fs.readdir(dir, function(err, files){
-        if (err) return callback(err);
-        
-        total = files.length;
-        
-        files.forEach(function(file) {
-            self.loadFile(dir + '/' + file, function(err) {
-                if (err) return callback(err);
-                
-                done++;
-                if (total === done) callback();
-            });
-        });
+        if (err) return cb(err);
+
+		async.forEach(files, function(file, next) {
+            self.loadFile(dir + '/' + file, next);
+		}, cb);
     });
 };

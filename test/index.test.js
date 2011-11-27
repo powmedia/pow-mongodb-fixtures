@@ -172,6 +172,37 @@ exports['load'] = {
 				test.done();
 			});
 		});
+	},
+	
+	'directory': function(test) {
+		loader.loadDir('./fixtures', function(err) {
+			if (err) return test.done(err);
+			
+			async.parallel([
+				function(next) {
+					loadCollection('archer', function(err, docs) {
+						if (err) return next(err);
+						
+						var names = _.pluck(docs, 'name');
+						
+						test.same(names.sort(), ['Sterling', 'Lana', 'Cheryl'].sort());
+						
+						next();
+					});
+				},
+				function(next) {
+					loadCollection('southPark', function(err, docs) {
+						if (err) return next(err);
+						
+						var names = _.pluck(docs, 'name');
+						
+						test.same(names.sort(), ['Eric', 'Butters', 'Kenny'].sort());
+
+						next();
+					});
+				}
+			], test.done);
+		});
 	}
 };
 
