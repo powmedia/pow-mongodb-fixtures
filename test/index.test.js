@@ -216,7 +216,7 @@ exports['clearAndLoad'] = {
 		});
 	},
 	
-	'clears existing data': function(test) {
+	'clears existing data before inserting': function(test) {
 		var data = {
 			foo: [{ name: 'baz'}]
 		};

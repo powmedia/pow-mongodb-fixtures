@@ -10,6 +10,10 @@
   "engines": { "node": ">= 0.4.1 < 0.5.0" },
   "dependencies": {
 		"async": "0.1.15",
-    "mongodb": "0.9.7-1"
-  }
+		"mongodb": "0.9.7-1",
+		"underscore": "1.2.2"
+  },
+	"devDependencies": {
+		"nodeunit": "0.6.4"
+	}
 }
