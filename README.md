@@ -32,7 +32,7 @@ You can also load fixtures as an object where each document is keyed, in case yo
     //users.js
     var id = require('pow-mongodb-fixtures').createObjectId;
 
-    exports.users = {
+    var users = exports.users = {
         user1: {
             _id: id(),
             name: 'Michael'
@@ -40,7 +40,7 @@ You can also load fixtures as an object where each document is keyed, in case yo
         user2: {
             _id: id(),
             name: 'George Michael',
-            father: exports.User.user1._id
+            father: users.user1._id
         },
         user3: {
             _id: id('4ed2b809d7446b9a0e000014'),
