@@ -103,8 +103,10 @@ Loader.prototype.load = function(fixtures, cb) {
 Loader.prototype.clearAndLoad = function(fixtures, cb) {
 	var self = this;
 	
-	self.db.dropDatabase(function(err, done) {
-		self.load(fixtures, cb);
+	self.db.open(function(err, db) {
+		db.dropDatabase(function(err, done) {
+			self.load(fixtures, cb);
+		});
 	});
 };
 
