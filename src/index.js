@@ -93,20 +93,68 @@ Loader.prototype.load = function(fixtures, cb) {
 
 
 /**
+ * Clears the database
+ *
+ * @param {String|Array}    Optional. Name of collection to clear or an array of collection names
+ * @param {Function}        Callback(err)
+ */
+Loader.prototype.clear = function(collections, cb) {
+    //Normalise arguments
+    if (arguments.length == 1) { //cb
+        cb = collections;
+        collections = null;
+    }
+    
+    var self = this;
+    
+    //Drop DB
+    if (!collections) {
+        self.db.open(function(err, db) {
+            if (err) return cb(err);
+    		db.dropDatabase(cb);
+    	});
+    	
+    	return;
+    }
+    
+    //Convert single collection as string to array
+    if (!_.isArray(collections)) collections = [collections];
+    
+    //Clear collections
+    self.db.open(function(err, db) {
+        if (err) return cb(err);
+        
+        async.forEach(collections, function(collection, cb) {
+            db.dropCollection(collection, cb);
+        }, cb);
+    });
+};
+
+
+/**
  * Clears the database and inserts data
  *
- * @param {Mixed}       The data to load. This parameter accepts either:
- *                          String: Path to a file or directory to load
- *                          Object: Object literal in the form described in docs
- * @param {Function}    Callback(err)
+ * @param {String|Array}    Optional. Name of collection to clear or an array of collection names
+ * @param {Mixed}           The data to load. This parameter accepts either:
+ *                              String: Path to a file or directory to load
+ *                              Object: Object literal in the form described in docs
+ * @param {Function}        Callback(err)
  */
-Loader.prototype.clearAndLoad = function(fixtures, cb) {
+Loader.prototype.clearAndLoad = function(collections, fixtures, cb) {
+    if (arguments.length == 2) { //fixtures, cb
+	    cb = fixtures;
+	    fixtures = collections;
+	    collections = null;
+    }
+    
 	var self = this;
-	
-	self.db.open(function(err, db) {
-		db.dropDatabase(function(err, done) {
-			self.load(fixtures, cb);
-		});
+
+	self.clear(collections, function(err) {
+	    if (err) return cb(err);
+
+	    self.load(fixtures, function(err) {
+	        cb();
+	    });
 	});
 };
 

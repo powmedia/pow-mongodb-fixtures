@@ -4,7 +4,8 @@ var fixtures = require('../src/index.js'),
 	id = fixtures.createObjectId,
 	mongo = require('mongodb'),
 	async = require('async'),
-	_ = require('underscore');
+	_ = require('underscore'),
+	Gently = require('gently');
 
 var dbName = 'pow-mongodb-fixtures-test',
 	loader = fixtures.connect(dbName),
@@ -70,7 +71,7 @@ exports['load'] = {
 		test.expect(2);
 		
 		var data = {
-			southPark: [
+			southpark: [
 				{ name: 'Eric' },
 				{ name: 'Butters' },
 				{ name: 'Kenny' }
@@ -87,7 +88,7 @@ exports['load'] = {
 			
 			async.parallel([
 				function(next) {
-					loadCollection('southPark', function(err, docs) {
+					loadCollection('southpark', function(err, docs) {
 						if (err) return next(err);
 						
 						var names = _.pluck(docs, 'name');
@@ -116,7 +117,7 @@ exports['load'] = {
 		test.expect(2);
 		
 		var data = {
-			southPark: {
+			southpark: {
 				eric: { name: 'Eric' },
 				butters: { name: 'Butters' },
 				kenny: { name: 'Kenny' }
@@ -133,7 +134,7 @@ exports['load'] = {
 
 			async.parallel([
 				function(next) {
-					loadCollection('southPark', function(err, docs) {
+					loadCollection('southpark', function(err, docs) {
 						if (err) return next(err);
 						
 						var names = _.pluck(docs, 'name');
@@ -191,7 +192,7 @@ exports['load'] = {
 					});
 				},
 				function(next) {
-					loadCollection('southPark', function(err, docs) {
+					loadCollection('southpark', function(err, docs) {
 						if (err) return next(err);
 						
 						var names = _.pluck(docs, 'name');
@@ -206,34 +207,176 @@ exports['load'] = {
 	}
 };
 
+exports['clear'] = {
+    setUp: function(done) {
+        db.dropDatabase(function(err) {
+            if (err) return done(err);
+            
+            loader.load('./fixtures', done);
+        });
+    },
+
+    'drops the db if collections not specified': function(test) {
+        async.series([
+            function(cb) {
+                loader.clear(cb);
+            },
+            
+            function(cb) {
+                loadCollection('archer', function(err, docs) {
+                    if (err) return cb(err);
+
+                    test.same(0, docs.length);
+
+                    cb();
+                });
+            },
+            
+            function(cb) {
+                loadCollection('southpark', function(err, docs) {
+                    if (err) return cb(err);
+
+                    test.same(0, docs.length);
+
+                    cb();
+                });
+            }
+        ], test.done);
+    },
+
+    'clears a collection if called with a string': function(test) {
+        async.series([
+            function(cb) {
+                loader.clear('archer', cb);
+            },
+            
+            function(cb) {
+                loadCollection('archer', function(err, docs) {
+                    if (err) return cb(err);
+
+                    test.same(0, docs.length);
+
+                    cb();
+                });
+            },
+            
+            function(cb) {
+                loadCollection('southpark', function(err, docs) {
+                    if (err) return cb(err);
+
+                    test.same(3, docs.length);
+
+                    cb();
+                });
+            }
+        ], test.done);
+    },
+    
+    'clears multiple collections if called with an array': function(test) {
+        async.series([
+            function(cb) {
+                loader.clear(['archer', 'southpark'], cb);
+            },
+            
+            function(cb) {
+                loadCollection('archer', function(err, docs) {
+                    if (err) return cb(err);
+
+                    test.same(0, docs.length);
+
+                    cb();
+                });
+            },
+            
+            function(cb) {
+                loadCollection('southpark', function(err, docs) {
+                    if (err) return cb(err);
+
+                    test.same(0, docs.length);
+
+                    cb();
+                });
+            }
+        ], test.done);
+    }
+};
+
 
 exports['clearAndLoad'] = {
-	setUp: function(done) {
-		db.collection('foo', function(err, collection) {
-			if (err) return done(err);
-			
-			collection.insert({ name: 'bar' }, { safe: true }, done);
-		});
-	},
-	
-	'clears existing data before inserting': function(test) {
-		var data = {
-			foo: [{ name: 'baz'}]
-		};
-		
-		loader.clearAndLoad(data, function(err) {
-			if (err) return test.done(err);
-			
-			loadCollection('foo', function(err, docs) {
-				if (err) return test.done(err);
-				
-				test.same(1, docs.length);
-				test.same('baz', docs[0].name);
-				
-				test.done();
-			});
-		});
-	}
+    setUp: function(done) {
+        db.dropDatabase(function(err) {
+            if (err) return done(err);
+            
+            loader.load('./fixtures', done);
+        });
+    },
+
+    'drops the db if collections not specified': function(test) {
+        var data = {};
+        data.southpark = [
+            { name: 'Kyle' }
+        ];
+        
+        async.series([
+            function(cb) {
+                loader.clearAndLoad(data, cb);
+            },
+            
+            function(cb) {
+                loadCollection('archer', function(err, docs) {
+                    if (err) return cb(err);
+
+                    test.same(0, docs.length);
+
+                    cb();
+                });
+            },
+            
+            function(cb) {
+                loadCollection('southpark', function(err, docs) {
+                    if (err) return cb(err);
+
+                    test.same(1, docs.length);
+
+                    cb();
+                });
+            }
+        ], test.done);
+    },
+    
+    'drops the collection if specified': function(test) {
+        var data = {};
+        data.southpark = [
+            { name: 'Kyle' }
+        ];
+        
+        async.series([
+            function(cb) {
+                loader.clearAndLoad('southpark', data, cb);
+            },
+            
+            function(cb) {
+                loadCollection('archer', function(err, docs) {
+                    if (err) return cb(err);
+
+                    test.same(3, docs.length);
+
+                    cb();
+                });
+            },
+            
+            function(cb) {
+                loadCollection('southpark', function(err, docs) {
+                    if (err) return cb(err);
+
+                    test.same(1, docs.length);
+
+                    cb();
+                });
+            }
+        ], test.done);
+    },
+
 };
 
 
