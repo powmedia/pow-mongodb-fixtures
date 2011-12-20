@@ -60,20 +60,47 @@ Usage
             { name: 'Maeby' },
             { name: 'George Michael' }
         ]
-    });
+    }, callback);
 
     //Files
-    fixtures.load(__dirname + '/fixtures/users.js');
+    fixtures.load(__dirname + '/fixtures/users.js', cb);
 
     //Directories (loads all files in the directory)
-    fixtures.load(__dirname + '/fixtures');
+    fixtures.load(__dirname + '/fixtures', callback);
 
+clear()
+-------
+
+    fixtures.clear(function(err) {
+        //Drops the database
+    });
+    
+    fixtures.clear('foo', function(err) {
+        //Clears the 'foo' collection
+    });
+    
+    fixtures.clear(['foo', 'bar'], function(err) {
+        //Clears the 'foo' and 'bar' collections
+    });
 
 clearAndLoad()
 --------------
 
-The same as load(), but drops the database before inserting the new documents.
+Run clear and then load in one operation.
 
+    var data = { users: [...] };
+    
+    fixtures.clearAndLoad(data, function(err) {
+        //Drops the database then loads
+    });
+
+    fixtures.clear('users', data, function(err) {
+        //Clears the 'foo' collection then loads data
+    });
+
+    fixtures.clear(['foo', 'bar'], data, function(err) {
+        //Clears the 'foo' and 'bar' collections then loads data
+    });
 
 Installation
 ------------
