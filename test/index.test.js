@@ -4,8 +4,7 @@ var fixtures = require('../src/index.js'),
 	id = fixtures.createObjectId,
 	mongo = require('mongodb'),
 	async = require('async'),
-	_ = require('underscore'),
-	Gently = require('gently');
+	_ = require('underscore');
 
 var dbName = 'pow-mongodb-fixtures-test',
 	loader = fixtures.connect(dbName),
@@ -298,6 +297,14 @@ exports['clear'] = {
                 });
             }
         ], test.done);
+    },
+    
+    'clearing non-existent collections shouldnt error': function(test) {
+        loader.clear('fheruas', function(err) {
+            test.ifError(err);
+            
+            test.done();
+        })
     }
 };
 

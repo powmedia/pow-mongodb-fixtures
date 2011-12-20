@@ -125,7 +125,10 @@ Loader.prototype.clear = function(collections, cb) {
         if (err) return cb(err);
         
         async.forEach(collections, function(collection, cb) {
-            db.dropCollection(collection, cb);
+            db.dropCollection(collection, function(err) {
+                if (err && err.message != 'ns not found') return cb(err);
+                cb();
+            });
         }, cb);
     });
 };
