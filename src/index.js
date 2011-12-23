@@ -6,7 +6,19 @@ var fs       = require('fs'),
 	_		 = require('underscore');
 
 
-var noop = function() {};
+/**
+ * Helper function that creates a MongoDB ObjectID given a hex string
+ * @param {String|ObjectId}  Optional hard-coded Object ID as string
+ */
+exports.createObjectId = function(id) {
+    if (!id) return new ObjectID();
+
+    //Allow cloning ObjectIDs
+    if (id.constructor.name == 'ObjectID') id = id.toString();
+
+    return new ObjectID(id);
+};
+
 
 
 /**
@@ -15,22 +27,9 @@ var noop = function() {};
  * @param {String}  Database name
  * @param {Object}  Connection options: host ('localhost'), port (27017)
  */
-module.exports.connect = function(dbName, options) {
+exports.connect = function(dbName, options) {
     return new Loader(dbName, options);
 }
-
-
-
-/**
- * Helper function that creates a MongoDB ObjectID given a hex string
- * @param {String}  Optional hard-coded Object ID as string
- */
-module.exports.createObjectId = function(str) {
-    if (str)
-        return new ObjectID(str);
-    else
-        return new ObjectID();
-};
 
 
 
@@ -40,7 +39,7 @@ module.exports.createObjectId = function(str) {
  * @param {String}  Database name
  * @param {Object}  Connection options: host ('localhost'), port (27017)
  */
-var Loader = function(dbName, options) {
+var Loader = exports.Loader = function(dbName, options) {
     options = options || {};
     
     var host = options.host || 'localhost',
@@ -62,38 +61,18 @@ var Loader = function(dbName, options) {
 Loader.prototype.load = function(fixtures, cb) {
     var self = this;
     
-    if (typeof fixtures == 'object') {
-
-        self.loadData(fixtures, cb);
-
-    } else if (typeof fixtures == 'string') {
-
-        //Get the absolute dir path if a relative path was given
-        if (fixtures.substr(0, 1) !== '/') {
-            var parentPath = module.parent.filename.split('/');
-            parentPath.pop();
-            fixtures = parentPath.join('/') + '/' + fixtures;
-        }
-
-        //Determine if fixtures is pointing to a file or directory
-        fs.stat(fixtures, function(err, stats) {
-            if (err) return cb(err);
-
-            if (stats.isDirectory()) {
-                self.loadDir(fixtures, cb);
-            } else { //File
-                self.loadFile(fixtures, cb);
-            }
-        });
-
-    } else { //Unsupported type
-        cb(new Error('Data must be an object, array or string (file or dir path)'));
-    }
+    _mixedToObject(fixtures, function(err, data) {
+        if (err) return cb(err);
+        
+        _loadData(self, data, cb);
+    });
 };
 
 
 /**
- * Clears the database
+ * loader.clear(cb) : Clears (drops) the entire database
+ *
+ * loader.clear(collections, cb) : Clears only the given collection(s)
  *
  * @param {String|Array}    Optional. Name of collection to clear or an array of collection names
  * @param {Function}        Callback(err)
@@ -111,6 +90,7 @@ Loader.prototype.clear = function(collections, cb) {
     if (!collections) {
         self.db.open(function(err, db) {
             if (err) return cb(err);
+            
     		db.dropDatabase(cb);
     	});
     	
@@ -127,6 +107,7 @@ Loader.prototype.clear = function(collections, cb) {
         async.forEach(collections, function(collection, cb) {
             db.dropCollection(collection, function(err) {
                 if (err && err.message != 'ns not found') return cb(err);
+                
                 cb();
             });
         }, cb);
@@ -135,47 +116,72 @@ Loader.prototype.clear = function(collections, cb) {
 
 
 /**
- * Clears the database and inserts data
+ * Drops the database and inserts data
  *
- * @param {String|Array}    Optional. Name of collection to clear or an array of collection names
  * @param {Mixed}           The data to load. This parameter accepts either:
  *                              String: Path to a file or directory to load
  *                              Object: Object literal in the form described in docs
  * @param {Function}        Callback(err)
  */
-Loader.prototype.clearAndLoad = function(collections, fixtures, cb) {
-    if (arguments.length == 2) { //fixtures, cb
-	    cb = fixtures;
-	    fixtures = collections;
-	    collections = null;
-    }
+Loader.prototype.clearAllAndLoad = function(fixtures, cb) {
+    var self = this;
     
-	var self = this;
-
-	self.clear(collections, function(err) {
+    self.clear(function(err) {
 	    if (err) return cb(err);
 
 	    self.load(fixtures, function(err) {
-	        cb();
+	        cb(err);
 	    });
 	});
 };
 
 
 /**
+ * Clears only the collections that have documents to be inserted, then inserts data
+ *
+ * @param {Mixed}           The data to load. This parameter accepts either:
+ *                              String: Path to a file or directory to load
+ *                              Object: Object literal in the form described in docs
+ * @param {Function}        Callback(err)
+ */
+Loader.prototype.clearAndLoad = function(fixtures, cb) {
+    var self = this;
+    
+    _mixedToObject(fixtures, function(err, objData) {
+        if (err) return cb(err);
+        
+        var collections = Object.keys(objData);
+        
+        self.clear(collections, function(err) {
+    	    if (err) return cb(err);
+
+    	    _loadData(self, objData, cb);
+    	});
+    });
+};
+
+
+
+
+//PRIVATE METHODS
+
+var noop = function() {};
+
+
+/**
  * Inserts the given data (object or array) as new documents
  *
+ * @param {Loader}       The configured loader
  * @param {Object|Array} The data to load
  * @param {Function}     Callback(err)
+ * @api private
  */
-Loader.prototype.loadData = function(data, cb) {	
-	var self = this,
-	
+var _loadData = function(loader, data, cb) {	
 	cb = cb || noop;
 	
 	var collectionNames = Object.keys(data);
 	
-	self.db.open(function (err, db) {
+	loader.db.open(function (err, db) {
 		if (err) return cb(err);
 		
 		async.forEach(collectionNames, function(collectionName, next) {
@@ -186,9 +192,7 @@ Loader.prototype.loadData = function(data, cb) {
 			if (Array.isArray(collectionData)) {
 				items = collectionData.slice();
 			} else {
-				items = _.map(collectionData, function(item) {
-					return item;
-				});
+				items = _.values(collectionData);
 			}
 			
 			db.collection(collectionName, function(err, collection) {
@@ -202,12 +206,49 @@ Loader.prototype.loadData = function(data, cb) {
 
 
 /**
- * Loads fixtures from one file
+ * Determine the type of fixtures being passed in (object, array, file, directory) and return
+ * an object keyed by collection name.
+ *
+ * @param {Object|String}       Fixture data (object, filename or dirname)
+ * @param {Function}            Optional callback(err, data)
+ * @api private
+ */
+var _mixedToObject = function(fixtures, cb) {
+    if (typeof fixtures == 'object') return cb(null, fixtures);
+
+    //As it's not an object, it should now be a file or directory path (string)
+    if (typeof fixtures != 'string') {
+        return cb(new Error('Data must be an object, array or string (file or dir path)'));
+    }
+
+    //Get the absolute dir path if a relative path was given
+    if (fixtures.substr(0, 1) !== '/') {
+        var parentPath = module.parent.filename.split('/');
+        parentPath.pop();
+        fixtures = parentPath.join('/') + '/' + fixtures;
+    }
+
+    //Determine if fixtures is pointing to a file or directory
+    fs.stat(fixtures, function(err, stats) {
+        if (err) return cb(err);
+
+        if (stats.isDirectory()) {
+            _dirToObject(fixtures, cb);
+        } else { //File
+            _fileToObject(fixtures, cb);
+        }
+    });
+}
+
+
+/**
+ * Get data from one file as an object
  * 
  * @param {String}      The full path to the file to load
- * @param {Function}    Optional callback(err)
+ * @param {Function}    Optional callback(err, data)
+ * @api private
  */
-Loader.prototype.loadFile = function(file, cb) { 
+var _fileToObject = function(file, cb) { 
     cb = cb || noop;
     
     if (file.substr(0, 1) !== '/') {
@@ -215,23 +256,22 @@ Loader.prototype.loadFile = function(file, cb) {
         parentPath.pop();
         file = parentPath.join('/') + '/' + file;
     }
+
+    var data = require(file);
     
-    this.load(require(file), cb);
+    cb(null, data);
 }
 
 
 /**
- * Loads fixtures from all files in a directory
- * 
- * TODO: Add callback option
+ * Get and compile data from all files in a directory, as an object
  * 
  * @param {String}      The directory path to load e.g. 'data/fixtures' or '../data'
  * @param {Function}    Optional callback(err)
+ * @api private
  */
-Loader.prototype.loadDir = function(dir, cb) {
+var _dirToObject = function(dir, cb) {
     cb = cb || noop;
-    
-    var self = this;
     
     //Get the absolute dir path if a relative path was given
     if (dir.substr(0, 1) !== '/') {
@@ -239,13 +279,45 @@ Loader.prototype.loadDir = function(dir, cb) {
         parentPath.pop();
         dir = parentPath.join('/') + '/' + dir;
     }
-
-    //Load each file in directory
-    fs.readdir(dir, function(err, files){
+    
+    async.waterfall([
+        function readDir(cb) {
+            fs.readdir(dir, cb)
+        },
+        
+        function filesToObjects(files, cb) {
+            async.map(files, function processFile(file, cb) {
+                var path = dir + '/' + file;
+                _fileToObject(path, cb);
+            }, cb);
+        },
+        
+        function combineObjects(results, cb) {
+            //console.log('RESULTS', results);
+            
+            //Where all combined data will be kept, keyed by collection name
+            var collections = {};
+            
+            results.forEach(function(fileObj) {
+                _.each(fileObj, function(docs, name) {
+                    //Convert objects to array
+                    if (_.isObject(docs)) {
+                        docs = _.values(docs);
+                    }
+                    
+                    //Create array for collection if it doesn't exist yet
+                    if (!collections[name]) collections[name] = [];
+                    
+                    //Add docs to collection
+                    collections[name] = collections[name].concat(docs);
+                });
+            });
+            
+            cb(null, collections)
+        }
+    ], function(err, combinedData) {
         if (err) return cb(err);
-
-		async.forEach(files, function(file, next) {
-            self.loadFile(dir + '/' + file, next);
-		}, cb);
+        
+        cb(null, combinedData);
     });
 };

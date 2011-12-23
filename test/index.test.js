@@ -40,12 +40,22 @@ exports['init'] = function(test) {
 	
 	
 exports['createObjectId'] = {
-	'with ID': function(test) {
+	'with ID as string': function(test) {
 		var objId = id('4eca80fae4af59f55d000020');
 		
-		test.same(typeof objId, 'object');
 		test.same(objId.constructor.name, 'ObjectID');
 		test.same(objId.toString(), '4eca80fae4af59f55d000020');
+		
+		test.done();
+	},
+	
+	'with existing ID': function(test) {
+	  var id1 = id();
+	  
+	  var id2 = id(id1);
+	  
+		test.same(id2.constructor.name, 'ObjectID');
+		test.same(id2.toString(), id1.toString());
 		
 		test.done();
 	},
@@ -53,13 +63,54 @@ exports['createObjectId'] = {
 	'without ID': function(test) {
 		var objId = id();
 		
-		test.same(typeof objId, 'object');
 		test.same(objId.constructor.name, 'ObjectID');
 		test.same(objId.toString().length, 24);
 		
 		test.done();
 	}
 };
+
+
+exports['works when referencing an objectID in different scope'] = {
+  'when using this': function(test) {
+    var todo = 'TODO: Havent been able to replicate error yet:';
+    todo += 'Sometimes when referencing an ID that was generated elsewhere, it gets encoded incorrectly.';
+    todo += 'Test needs to fail first so it can be fixed.';
+    
+    console.log(todo);
+    return test.done();
+    
+    var self = this;
+    
+    var data = {};
+  
+    var users = data.users = {
+      sterling: {
+        _id: id(), 
+        name: 'Sterling'
+      }
+    };
+    
+	  var posts = data.posts = [
+      {
+        _id: id(),
+        author: users.sterling._id,
+        text: 'Danger Zone!'
+      }
+    ];
+	  
+	  loader.load(data, function(err) {
+	    if (err) return test.done(err);
+      
+      //TODO: Try to replicate problem from before. Maybe have to load setup fixture into DB
+      test.same(users.sterling._id.toString(), posts[0].author.toString());
+
+      process.exit();
+  	  test.done();
+	  });
+  }
+};
+
 
 exports['load'] = {
 	setUp: function(done) {
@@ -196,7 +247,9 @@ exports['load'] = {
 						
 						var names = _.pluck(docs, 'name');
 						
-						test.same(names.sort(), ['Eric', 'Butters', 'Kenny'].sort());
+						var expected = ['Eric', 'Butters', 'Kenny', 'Stan', 'Towelie'];
+						
+						test.same(names.sort(), expected.sort());
 
 						next();
 					});
@@ -263,7 +316,7 @@ exports['clear'] = {
                 loadCollection('southpark', function(err, docs) {
                     if (err) return cb(err);
 
-                    test.same(3, docs.length);
+                    test.same(5, docs.length);
 
                     cb();
                 });
@@ -309,7 +362,7 @@ exports['clear'] = {
 };
 
 
-exports['clearAndLoad'] = {
+exports['clearAllAndLoad'] = {
     setUp: function(done) {
         db.dropDatabase(function(err) {
             if (err) return done(err);
@@ -318,7 +371,7 @@ exports['clearAndLoad'] = {
         });
     },
 
-    'drops the db if collections not specified': function(test) {
+    'drops the db and loads data': function(test) {
         var data = {};
         data.southpark = [
             { name: 'Kyle' }
@@ -326,7 +379,7 @@ exports['clearAndLoad'] = {
         
         async.series([
             function(cb) {
-                loader.clearAndLoad(data, cb);
+                loader.clearAllAndLoad(data, cb);
             },
             
             function(cb) {
@@ -349,9 +402,20 @@ exports['clearAndLoad'] = {
                 });
             }
         ], test.done);
+    }
+};
+
+
+exports['clearAndLoad'] = {
+    setUp: function(done) {
+        db.dropDatabase(function(err) {
+            if (err) return done(err);
+            
+            loader.load('./fixtures', done);
+        });
     },
     
-    'drops the collection if specified': function(test) {
+    'drops only referenced collections; with object data': function(test) {
         var data = {};
         data.southpark = [
             { name: 'Kyle' }
@@ -359,7 +423,7 @@ exports['clearAndLoad'] = {
         
         async.series([
             function(cb) {
-                loader.clearAndLoad('southpark', data, cb);
+                loader.clearAndLoad(data, cb);
             },
             
             function(cb) {
@@ -383,6 +447,36 @@ exports['clearAndLoad'] = {
             }
         ], test.done);
     },
+    
+    'drops only referenced collections; with a file': function(test) {
+        async.series([
+            function(cb) {
+                loader.clearAndLoad(__dirname + '/fixtures/southpark2.js', cb);
+            },
+            
+            function(cb) {
+                loadCollection('archer', function(err, docs) {
+                    if (err) return cb(err);
+
+                    test.same(3, docs.length);
+
+                    cb();
+                });
+            },
+            
+            function(cb) {
+                loadCollection('southpark', function(err, docs) {
+                    if (err) return cb(err);
+                    
+                    var names = _.pluck(docs, 'name');
+                    
+                    test.same(names, ['Stan', 'Towelie']);
+
+                    cb();
+                });
+            }
+        ], test.done);
+    }
 
 };
 
