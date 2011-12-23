@@ -1,0 +1,3 @@
+exports.southpark = [
+	{ name: 'Eric' },
+];

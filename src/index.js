@@ -6,7 +6,19 @@ var fs       = require('fs'),
 	_		 = require('underscore');
 
 
-var noop = function() {};
+/**
+ * Helper function that creates a MongoDB ObjectID given a hex string
+ * @param {String|ObjectId}  Optional hard-coded Object ID as string
+ */
+exports.createObjectId = function(id) {
+    if (!id) return new ObjectID();
+
+    //Allow cloning ObjectIDs
+    if (id.constructor.name == 'ObjectID') id = id.toString();
+
+    return new ObjectID(id);
+};
+
 
 
 /**
@@ -15,22 +27,9 @@ var noop = function() {};
  * @param {String}  Database name
  * @param {Object}  Connection options: host ('localhost'), port (27017)
  */
-module.exports.connect = function(dbName, options) {
+exports.connect = function(dbName, options) {
     return new Loader(dbName, options);
 }
-
-
-
-/**
- * Helper function that creates a MongoDB ObjectID given a hex string
- * @param {String}  Optional hard-coded Object ID as string
- */
-module.exports.createObjectId = function(str) {
-    if (str)
-        return new ObjectID(str);
-    else
-        return new ObjectID();
-};
 
 
 
@@ -40,7 +39,7 @@ module.exports.createObjectId = function(str) {
  * @param {String}  Database name
  * @param {Object}  Connection options: host ('localhost'), port (27017)
  */
-var Loader = function(dbName, options) {
+var Loader = exports.Loader = function(dbName, options) {
     options = options || {};
     
     var host = options.host || 'localhost',
@@ -48,6 +47,9 @@ var Loader = function(dbName, options) {
     
     //Connect
     this.db = new mongo.Db(dbName, new mongo.Server(host, port, {}));
+    
+    //Track whether to clear collections
+    _resetClearState.call(this);
 };
 
 
@@ -60,40 +62,16 @@ var Loader = function(dbName, options) {
  * @param {Function}    Callback(err)
  */
 Loader.prototype.load = function(fixtures, cb) {
-    var self = this;
+    _resetClearState.call(this);
     
-    if (typeof fixtures == 'object') {
-
-        self.loadData(fixtures, cb);
-
-    } else if (typeof fixtures == 'string') {
-
-        //Get the absolute dir path if a relative path was given
-        if (fixtures.substr(0, 1) !== '/') {
-            var parentPath = module.parent.filename.split('/');
-            parentPath.pop();
-            fixtures = parentPath.join('/') + '/' + fixtures;
-        }
-
-        //Determine if fixtures is pointing to a file or directory
-        fs.stat(fixtures, function(err, stats) {
-            if (err) return cb(err);
-
-            if (stats.isDirectory()) {
-                self.loadDir(fixtures, cb);
-            } else { //File
-                self.loadFile(fixtures, cb);
-            }
-        });
-
-    } else { //Unsupported type
-        cb(new Error('Data must be an object, array or string (file or dir path)'));
-    }
+    _load.call(this, fixtures, cb);
 };
 
 
 /**
- * Clears the database
+ * loader.clear(cb) : Clears (drops) the entire database
+ *
+ * loader.clear(collections, cb) : Clears only the given collection(s)
  *
  * @param {String|Array}    Optional. Name of collection to clear or an array of collection names
  * @param {Function}        Callback(err)
@@ -135,22 +113,42 @@ Loader.prototype.clear = function(collections, cb) {
 
 
 /**
- * Clears the database and inserts data
+ * Drops the database and inserts data
  *
- * @param {String|Array}    Optional. Name of collection to clear or an array of collection names
  * @param {Mixed}           The data to load. This parameter accepts either:
  *                              String: Path to a file or directory to load
  *                              Object: Object literal in the form described in docs
  * @param {Function}        Callback(err)
  */
-Loader.prototype.clearAndLoad = function(collections, fixtures, cb) {
-    if (arguments.length == 2) { //fixtures, cb
-	    cb = fixtures;
-	    fixtures = collections;
-	    collections = null;
-    }
+Loader.prototype.clearAllAndLoad = function(fixtures, cb) {
+    var self = this;
     
-	var self = this;
+    _resetClearState.call(self);
+    
+    self.clear(function(err) {
+	    if (err) return cb(err);
+
+	    self.load(fixtures, function(err) {
+	        cb();
+	    });
+	});
+};
+
+
+/**
+ * Clears only the collections that have documents to be inserted, then inserts data
+ *
+ * @param {Mixed}           The data to load. This parameter accepts either:
+ *                              String: Path to a file or directory to load
+ *                              Object: Object literal in the form described in docs
+ * @param {Function}        Callback(err)
+ */
+Loader.prototype.clearAndLoad = function(fixtures, cb) {
+    var self = this;
+    
+    //Turn on clearing
+    _resetClearState.call(self);
+    self.clearCollectionsFirst = true;
 
 	self.clear(collections, function(err) {
 	    if (err) return cb(err);
@@ -162,13 +160,71 @@ Loader.prototype.clearAndLoad = function(collections, fixtures, cb) {
 };
 
 
+
+
+//PRIVATE METHODS
+
+var noop = function() {};
+
+
+/**
+ * Turns off clearing before inserting data
+ */
+var _resetClearState = function() {
+    this.clearCollectionsFirst = false;
+    this.clearedCollections = [];
+};
+
+
+/**
+ * Inserts data
+ *
+ * @param {Mixed}       The data to load. This parameter accepts either:
+ *                          String: Path to a file or directory to load
+ *                          Object: Object literal in the form described in docs
+ * @param {Function}    Callback(err)
+ */
+var _load = function(fixtures, cb) {
+    var self = this;
+    
+    if (typeof fixtures == 'object') {
+
+        _loadData.call(self, fixtures, cb);
+
+    } else if (typeof fixtures == 'string') {
+
+        //Get the absolute dir path if a relative path was given
+        if (fixtures.substr(0, 1) !== '/') {
+            var parentPath = module.parent.filename.split('/');
+            parentPath.pop();
+            fixtures = parentPath.join('/') + '/' + fixtures;
+        }
+
+        //Determine if fixtures is pointing to a file or directory
+        fs.stat(fixtures, function(err, stats) {
+            if (err) return cb(err);
+
+            if (stats.isDirectory()) {
+                _loadDir.call(self, fixtures, cb);
+            } else { //File
+                _loadFile.call(self, fixtures, cb);
+            }
+        });
+
+    } else { //Unsupported type
+        cb(new Error('Data must be an object, array or string (file or dir path)'));
+    }
+}
+
+
 /**
  * Inserts the given data (object or array) as new documents
  *
  * @param {Object|Array} The data to load
  * @param {Function}     Callback(err)
+ * @api private
  */
-Loader.prototype.loadData = function(data, cb) {	
+var _loadData = function(data, cb) {	
 	var self = this,
 	
 	cb = cb || noop;
@@ -186,9 +242,7 @@ Loader.prototype.loadData = function(data, cb) {
 			if (Array.isArray(collectionData)) {
 				items = collectionData.slice();
 			} else {
-				items = _.map(collectionData, function(item) {
-					return item;
-				});
+				items = _.values(collectionData);
 			}
 			
 			db.collection(collectionName, function(err, collection) {
@@ -206,8 +260,9 @@ Loader.prototype.loadData = function(data, cb) {
  * 
  * @param {String}      The full path to the file to load
  * @param {Function}    Optional callback(err)
+ * @api private
  */
-Loader.prototype.loadFile = function(file, cb) { 
+var _loadFile = function(file, cb) { 
     cb = cb || noop;
     
     if (file.substr(0, 1) !== '/') {
@@ -223,12 +278,11 @@ Loader.prototype.loadFile = function(file, cb) {
 /**
  * Loads fixtures from all files in a directory
  * 
- * TODO: Add callback option
- * 
  * @param {String}      The directory path to load e.g. 'data/fixtures' or '../data'
  * @param {Function}    Optional callback(err)
+ * @api private
  */
-Loader.prototype.loadDir = function(dir, cb) {
+var _loadDir = function(dir, cb) {
     cb = cb || noop;
     
     var self = this;
@@ -245,7 +299,7 @@ Loader.prototype.loadDir = function(dir, cb) {
         if (err) return cb(err);
 
 		async.forEach(files, function(file, next) {
-            self.loadFile(dir + '/' + file, next);
+            _loadFile.call(self, dir + '/' + file, next);
 		}, cb);
     });
 };

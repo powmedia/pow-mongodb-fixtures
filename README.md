@@ -68,8 +68,9 @@ Usage
     //Directories (loads all files in the directory)
     fixtures.load(__dirname + '/fixtures', callback);
 
-clear()
--------
+
+clear(callback)
+---------------
 
     fixtures.clear(function(err) {
         //Drops the database
@@ -82,25 +83,25 @@ clear()
     fixtures.clear(['foo', 'bar'], function(err) {
         //Clears the 'foo' and 'bar' collections
     });
+    
 
-clearAndLoad()
---------------
+clearAndLoad(data, callback)
+----------------------------
 
-Run clear and then load in one operation.
+Drop the database (clear all collections) and load data
+
+
+clearAndLoad(data, callback)
+----------------------------
+
+Clear the collections that have documents in the `data` that is passed in, and then load data
 
     var data = { users: [...] };
     
     fixtures.clearAndLoad(data, function(err) {
-        //Drops the database then loads
+        //Clears only the 'users' collection then loads data
     });
-
-    fixtures.clear('users', data, function(err) {
-        //Clears the 'foo' collection then loads data
-    });
-
-    fixtures.clear(['foo', 'bar'], data, function(err) {
-        //Clears the 'foo' and 'bar' collections then loads data
-    });
+    
 
 Installation
 ------------
