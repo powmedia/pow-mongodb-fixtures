@@ -247,7 +247,9 @@ exports['load'] = {
 						
 						var names = _.pluck(docs, 'name');
 						
-						test.same(names.sort(), ['Eric', 'Butters', 'Kenny'].sort());
+						var expected = ['Eric', 'Butters', 'Kenny', 'Stan', 'Towelie'];
+						
+						test.same(names.sort(), expected.sort());
 
 						next();
 					});
@@ -314,7 +316,7 @@ exports['clear'] = {
                 loadCollection('southpark', function(err, docs) {
                     if (err) return cb(err);
 
-                    test.same(3, docs.length);
+                    test.same(5, docs.length);
 
                     cb();
                 });
@@ -449,7 +451,7 @@ exports['clearAndLoad'] = {
     'drops only referenced collections; with a file': function(test) {
         async.series([
             function(cb) {
-                loader.clearAndLoad(__dirname + '/fixtures2/southpark_less.js', cb);
+                loader.clearAndLoad(__dirname + '/fixtures/southpark2.js', cb);
             },
             
             function(cb) {
@@ -465,8 +467,10 @@ exports['clearAndLoad'] = {
             function(cb) {
                 loadCollection('southpark', function(err, docs) {
                     if (err) return cb(err);
-
-                    test.same(1, docs.length);
+                    
+                    var names = _.pluck(docs, 'name');
+                    
+                    test.same(names, ['Stan', 'Towelie']);
 
                     cb();
                 });
