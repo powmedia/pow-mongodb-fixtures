@@ -112,7 +112,7 @@ Clears existing data.
     });
     
 
-clearAndLoad(data, callback)
+clearAllAndLoad(data, callback)
 ----------------------------
 
 Drops the database (clear all collections) and loads data.
