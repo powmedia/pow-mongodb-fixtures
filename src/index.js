@@ -89,6 +89,7 @@ Loader.prototype.clear = function(collections, cb) {
     if (!collections) {
         self.db.open(function(err, db) {
             if (err) return cb(err);
+            
     		db.dropDatabase(cb);
     	});
     	
@@ -105,6 +106,7 @@ Loader.prototype.clear = function(collections, cb) {
         async.forEach(collections, function(collection, cb) {
             db.dropCollection(collection, function(err) {
                 if (err && err.message != 'ns not found') return cb(err);
+                
                 cb();
             });
         }, cb);
@@ -129,7 +131,7 @@ Loader.prototype.clearAllAndLoad = function(fixtures, cb) {
 	    if (err) return cb(err);
 
 	    self.load(fixtures, function(err) {
-	        cb();
+	        cb(err);
 	    });
 	});
 };
@@ -149,6 +151,8 @@ Loader.prototype.clearAndLoad = function(fixtures, cb) {
     //Turn on clearing
     _resetClearState.call(self);
     self.clearCollectionsFirst = true;
+    
+    var collections = Object.keys(fixtures);
 
 	self.clear(collections, function(err) {
 	    if (err) return cb(err);
