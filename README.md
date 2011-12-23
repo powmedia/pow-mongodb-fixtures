@@ -9,8 +9,6 @@ Fixtures can be in one file, or divided up into separate files for organisation
 The fixture files must export objects which are keyed by the MongoDB collection name, each
 containing the data for documents within that.
 
-WARNING: Loading fixtures will clear the existing contents of a collection!
-
 FOR EXAMPLE:
 With the file below, 3 documents will be inserted into the 'users' collection and 2 into the 'businesses' collection:
 
