@@ -49,10 +49,35 @@ You can also load fixtures as an object where each document is keyed, in case yo
     }
 
 
-Usage
------
+API
+===
+
+connect(dbname, options)
+------------------------
+
+Returns a new Loader instance, configured to interact with a certain database.
+
+Options:
+
+- host (Default: localhost)
+- port (Default: 27017)
+
+Usage:
 
     var fixtures = require('pow-mongodb-fixtures').connect('dbname');
+    
+    var fixtures2 = require('pow-mongodb-fixtures').connect('dbname', {
+      host: 'http://dbhost.com/',
+      port: 1234
+    });
+
+
+load(data, callback)
+--------------------
+
+Adds documents to the relevant collection. If the collection doesn't exist it will be created first.
+
+    var fixtures = require('pow-mongodb-fixtures').connect('mydb');
     
     //Objects
     fixtures.load({
@@ -72,6 +97,8 @@ Usage
 clear(callback)
 ---------------
 
+Clears existing data.
+
     fixtures.clear(function(err) {
         //Drops the database
     });
@@ -88,13 +115,13 @@ clear(callback)
 clearAndLoad(data, callback)
 ----------------------------
 
-Drop the database (clear all collections) and load data
+Drops the database (clear all collections) and loads data.
 
 
 clearAndLoad(data, callback)
 ----------------------------
 
-Clear the collections that have documents in the `data` that is passed in, and then load data
+Clears the collections that have documents in the `data` that is passed in, and then loads data.
 
     var data = { users: [...] };
     
