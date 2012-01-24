@@ -2,8 +2,8 @@
 var fs       = require('fs'),
     mongo    = require('mongodb'),
     ObjectID = require('mongodb/lib/mongodb/bson/bson').ObjectID,
-	async	 = require('async'),
-	_		 = require('underscore');
+  	async	 = require('async'),
+  	_		 = require('underscore');
 
 
 /**
@@ -80,16 +80,16 @@ Loader.prototype.load = function(fixtures, cb) {
 Loader.prototype.clear = function(collections, cb) {
     //Normalise arguments
     if (arguments.length == 1) { //cb
-        cb = collections;
-        collections = null;
+      cb = collections;
+      collections = null;
     }
     
     var self = this;
     
     //Drop DB
     if (!collections) {
-        self.db.open(function(err, db) {
-            if (err) return cb(err);
+      _connect(self, function(err, db) {
+        if (err) return cb(err);
             
     		db.dropDatabase(cb);
     	});
@@ -101,7 +101,7 @@ Loader.prototype.clear = function(collections, cb) {
     if (!_.isArray(collections)) collections = [collections];
     
     //Clear collections
-    self.db.open(function(err, db) {
+    _connect(self, function(err, db) {
         if (err) return cb(err);
         
         async.forEach(collections, function(collection, cb) {
@@ -167,6 +167,23 @@ Loader.prototype.clearAndLoad = function(fixtures, cb) {
 
 var noop = function() {};
 
+/**
+ * Connects to the database and returns the client. If a connection has already been established it is used.
+ *
+ * @param {Loader}       The configured loader
+ * @param {Function}     Callback(err, client)
+ */
+var _connect = function(loader, cb) {
+  if (loader.client) return cb(null, loader.client);
+  
+  loader.db.open(function(err, client) {
+    if (err) return cb(err);
+    
+    loader.client = client;
+    cb(null, client);
+  });
+};
+
 
 /**
  * Inserts the given data (object or array) as new documents
@@ -181,7 +198,7 @@ var _loadData = function(loader, data, cb) {
 	
 	var collectionNames = Object.keys(data);
 	
-	loader.db.open(function (err, db) {
+	_connect(loader, function(err, db) {
 		if (err) return cb(err);
 		
 		async.forEach(collectionNames, function(collectionName, next) {
