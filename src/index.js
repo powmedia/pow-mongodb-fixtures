@@ -1,7 +1,7 @@
 //Dependencies
 var fs       = require('fs'),
     mongo    = require('mongodb'),
-    ObjectID = require('mongodb/lib/mongodb/bson/bson').ObjectID,
+    ObjectID = require('bson').ObjectID,
   	async	 = require('async'),
   	_		 = require('underscore');
 

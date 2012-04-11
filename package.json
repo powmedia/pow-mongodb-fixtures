@@ -11,7 +11,8 @@
   "dependencies": {
 		"async": "0.1.15",
 		"mongodb": ">=0.9.7-1.4",
-		"underscore": ">=1.2.2"
+		"underscore": ">=1.2.2",
+		"bson": ">=0.0.4",
   },
 	"devDependencies": {
 		"nodeunit": "0.6.4"
