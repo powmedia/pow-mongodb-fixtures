@@ -72,46 +72,76 @@ Loader.prototype.load = function(fixtures, cb) {
 /**
  * loader.clear(cb) : Clears (drops) the entire database
  *
- * loader.clear(collections, cb) : Clears only the given collection(s)
+ * loader.clear(collectionNames, cb) : Clears only the given collection(s)
  *
  * @param {String|Array}    Optional. Name of collection to clear or an array of collection names
  * @param {Function}        Callback(err)
  */
-Loader.prototype.clear = function(collections, cb) {
+Loader.prototype.clear = function(collectionNames, cb) {
     //Normalise arguments
     if (arguments.length == 1) { //cb
-      cb = collections;
-      collections = null;
+      cb = collectionNames;
+      collectionNames = null;
     }
     
     var self = this;
-    
-    //Drop DB
-    if (!collections) {
-      _connect(self, function(err, db) {
-        if (err) return cb(err);
-            
-    		db.dropDatabase(cb);
-    	});
-    	
-    	return;
-    }
-    
-    //Convert single collection as string to array
-    if (!_.isArray(collections)) collections = [collections];
-    
-    //Clear collections
-    _connect(self, function(err, db) {
-        if (err) return cb(err);
-        
-        async.forEach(collections, function(collection, cb) {
-            db.dropCollection(collection, function(err) {
-                if (err && err.message != 'ns not found') return cb(err);
-                
+
+    var results = {};
+
+    async.series([
+        function connect(cb) {
+            _connect(self, function(err, db) {
+                if (err) return cb(err);
+
+                results.db = db;
                 cb();
-            });
-        }, cb);
-    });
+            })
+        },
+
+        function getCollectionNames(cb) {
+            //If collectionNames not passed we clear all of them
+            if (!collectionNames) {
+                results.db.collectionNames(function(err, names) {
+                    if (err) return cb(err);
+
+                    //Get the real collection names
+                    names = _.map(names, function(nameObj) {
+                        var fullName = nameObj.name,
+                            parts = fullName.split('.');
+
+                        //Remove DB name
+                        parts.shift();
+
+                        //Skip system collections
+                        if (parts[0] == 'system' || parts[0] == 'local') return;
+
+                        return parts.join('.');
+                    });
+
+                    results.collectionNames = _.compact(names);
+
+                    cb();
+                })
+            } else {
+                //Convert single collection as string to array
+                if (!_.isArray(collectionNames)) collectionNames = [collectionNames];
+
+                results.collectionNames = collectionNames;
+
+                cb();
+            }
+        },
+
+        function clearCollections() {
+            async.forEach(results.collectionNames, function(name, cb) {
+                results.db.collection(name, function(err, collection) {
+                    if (err) return cb(err);
+
+                    collection.remove({}, cb);
+                });
+            }, cb);
+        }
+    ], cb)
 };
 
 
