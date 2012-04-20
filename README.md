@@ -138,7 +138,7 @@ should be:
 
 * collectionName - name of collection
 * document - the document which is to be inserted
-* callback - function with signature (err, modifiedDocument). This should get called with the resulting document.
+* callback - function with signature (err, modifiedDocument). This should be called with the modified document.
 
 Modifiers are chained in the order in which they're added. For example:
 
