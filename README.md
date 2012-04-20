@@ -128,6 +128,42 @@ Clears the collections that have documents in the `data` that is passed in, and 
     });
     
 
+addModifier(callback)
+----------------------------
+
+Adds a modifier (function) which gets called for each document that is to be inserted. The signature of this function
+should be:
+
+    (collectionName, document, callback)
+
+* collectionName - name of collection
+* document - the document which is to be inserted
+* callback - function with signature (err, modifiedDocument). This should be called with the modified document.
+
+Modifiers are chained in the order in which they're added. For example:
+
+
+    var data = { users: [...] };
+
+    // this modifier will get called first
+    fixtures.addModifier(function(collectionName, doc, cb) {
+      doc.createdAt = new Date();
+
+      cb(null, doc);
+    });
+
+    // this modifier will get called second with the result from the first modifier call
+    fixtures.addModifier(function(collectionName, doc, cb) {
+      doc.updatedAt = new Date();
+
+      cb(null, doc);
+    });
+
+    fixtures.load(data, function(err) {
+        // each loaded data item will have the createdAt and updatedAt keys set.
+    });
+
+
 Installation
 ------------
 
