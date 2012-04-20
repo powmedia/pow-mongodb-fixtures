@@ -47,6 +47,9 @@ var Loader = exports.Loader = function(dbName, options) {
     
     //Connect
     this.db = new mongo.Db(dbName, new mongo.Server(host, port, {}));
+
+    // Modifiers
+    this.modifiers = [];
 };
 
 
@@ -67,6 +70,22 @@ Loader.prototype.load = function(fixtures, cb) {
         _loadData(self, data, cb);
     });
 };
+
+
+
+/**
+ * Add a modifier function.
+ *
+ * Modifier functions get called (in the order in which they were added) for each document, prior to it being loaded.
+ * The result from each modifier is fed into the next modifier as its input, and so on until the final result which is
+ * then inserted into the db.
+ *
+ * @param {Function} cb the modifier callback function with signature (collectionName, document, callback).
+ */
+Loader.prototype.addModifier = function(cb) {
+  this.modifiers.push(cb);
+};
+
 
 
 /**
@@ -231,22 +250,45 @@ var _loadData = function(loader, data, cb) {
 	_connect(loader, function(err, db) {
 		if (err) return cb(err);
 		
-		async.forEach(collectionNames, function(collectionName, next) {
+		async.forEach(collectionNames, function(collectionName, cbForEachCollection) {
 			var collectionData = data[collectionName];
-			
-			//Convert object to array
-			var items;
-			if (Array.isArray(collectionData)) {
-				items = collectionData.slice();
-			} else {
-				items = _.values(collectionData);
-			}
-			
-			db.collection(collectionName, function(err, collection) {
-				if (err) return next(err);
 
-				collection.insert(items, { safe: true }, next);
-			});
+      //Convert object to array
+      var items;
+      if (Array.isArray(collectionData)) {
+        items = collectionData.slice();
+      } else {
+        items = _.values(collectionData);
+      }
+
+      var modifiedItems = [];
+
+      async.forEach(items, function(item, cbForEachItem) {
+        // apply modifiers
+        async.forEach(loader.modifiers, function(modifier, cbForEachModifier) {
+          modifier.call(modifier, collectionName, item, function(err, modifiedDoc) {
+            if (err) return cbForEachModifier(err);
+
+            item = modifiedDoc;
+
+            cbForEachModifier();
+          });
+        }, function(err) {
+          if (err) return cbForEachItem(err);
+
+          modifiedItems.push(item);
+
+          cbForEachItem();
+        });
+      }, function(err) {
+        if (err) return cbForEachCollection(err);
+
+        db.collection(collectionName, function(err, collection) {
+          if (err) return cbForEachCollection(err);
+
+          collection.insert(modifiedItems, { safe: true }, cbForEachCollection);
+        });
+      });
 		}, cb);
 	});
 };

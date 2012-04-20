@@ -112,6 +112,21 @@ exports['works when referencing an objectID in different scope'] = {
 };
 
 
+exports['add modifier'] = function(test) {
+  var l = fixtures.connect(dbName);
+
+  test.same([], l.modifiers);
+
+  var modifier = function(col, doc, cb) { cb(null) };
+
+  l.addModifier(modifier);
+
+  test.same([modifier], l.modifiers);
+
+  test.done();
+};
+
+
 exports['load'] = {
 	setUp: function(done) {
 		db.dropDatabase(done);
@@ -256,7 +271,41 @@ exports['load'] = {
 				}
 			], test.done);
 		});
-	}
+	},
+
+  'with modifiers' : function(test) {
+    var l = fixtures.connect(dbName);
+
+    l.addModifier(function(collection, doc, cb) {
+      doc.x = doc.name + 'X';
+
+       cb(null, doc);
+    });
+
+    l.addModifier(function(collection, doc, cb) {
+      doc.name += 'Y';
+
+      cb(null, doc);
+    });
+
+    l.load('./fixtures/archer.js', function(err) {
+  			if (err) return test.done(err);
+
+  			loadCollection('archer', function(err, docs) {
+  				if (err) return test.done(err);
+
+  				var x = _.pluck(docs, 'x');
+
+          test.same(x.sort(), ['SterlingX', 'LanaX', 'CherylX'].sort());
+
+          var y = _.pluck(docs, 'name');
+
+          test.same(y.sort(), ['SterlingY', 'LanaY', 'CherylY'].sort());
+
+  				test.done();
+  			});
+    });
+  }
 };
 
 exports['clear'] = {
