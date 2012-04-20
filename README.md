@@ -134,11 +134,11 @@ addModifier(callback)
 Adds a modifier (function) which gets called for each document that is to be inserted. The signature of this function
 should be:
 
-  (collectionName, document, callback)
+    (collectionName, document, callback)
 
-  collectionName - name of collection
-  document - the document which is to be inserted
-  callback - function with signature (err, modifiedDocument). This should get called with the resulting document.
+* collectionName - name of collection
+* document - the document which is to be inserted
+* callback - function with signature (err, modifiedDocument). This should get called with the resulting document.
 
 Modifiers are chained in the order in which they're added. For example:
 
