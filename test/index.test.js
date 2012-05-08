@@ -3,6 +3,7 @@
 var fixtures = require('../src/index.js'),
 	id = fixtures.createObjectId,
 	mongo = require('mongodb'),
+  fs = require('fs'),
 	async = require('async'),
 	_ = require('underscore');
 
@@ -240,38 +241,59 @@ exports['load'] = {
 		});
 	},
 	
-	'directory': function(test) {
-		loader.load('./fixtures', function(err) {
-			if (err) return test.done(err);
-			
-			async.parallel([
-				function(next) {
-					loadCollection('archer', function(err, docs) {
-						if (err) return next(err);
-						
-						var names = _.pluck(docs, 'name');
-						
-						test.same(names.sort(), ['Sterling', 'Lana', 'Cheryl'].sort());
-						
-						next();
-					});
-				},
-				function(next) {
-					loadCollection('southpark', function(err, docs) {
-						if (err) return next(err);
-						
-						var names = _.pluck(docs, 'name');
-						
-						var expected = ['Eric', 'Butters', 'Kenny', 'Stan', 'Towelie'];
-						
-						test.same(names.sort(), expected.sort());
+	'directory': {
+    'default' : function(test) {
+      loader.load('./fixtures', function(err) {
+    			if (err) return test.done(err);
 
-						next();
-					});
-				}
-			], test.done);
-		});
-	},
+    			async.parallel([
+    				function(next) {
+    					loadCollection('archer', function(err, docs) {
+    						if (err) return next(err);
+
+    						var names = _.pluck(docs, 'name');
+
+    						test.same(names.sort(), ['Sterling', 'Lana', 'Cheryl'].sort());
+
+    						next();
+    					});
+    				},
+    				function(next) {
+    					loadCollection('southpark', function(err, docs) {
+    						if (err) return next(err);
+
+    						var names = _.pluck(docs, 'name');
+
+    						var expected = ['Eric', 'Butters', 'Kenny', 'Stan', 'Towelie'];
+
+    						test.same(names.sort(), expected.sort());
+
+    						next();
+    					});
+    				}
+    			], test.done);
+    		});
+    },
+    'ignore sub directories' : function (test) {
+      loader.load('./fixtures_with_subdir', function(err) {
+          if (err) return test.done(err);
+
+          async.parallel([
+            function(next) {
+              loadCollection('archer', function(err, docs) {
+                if (err) return next(err);
+
+                var names = _.pluck(docs, 'name');
+
+                test.same(names.sort(), ['Sterling', 'Lana', 'Cheryl'].sort());
+
+                next();
+              });
+            }
+          ], test.done);
+        });
+    }
+  },
 
   'with modifiers' : function(test) {
     var l = fixtures.connect(dbName);
