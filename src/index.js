@@ -377,7 +377,17 @@ var _dirToObject = function(dir, cb) {
         function filesToObjects(files, cb) {
             async.map(files, function processFile(file, cb) {
                 var path = dir + '/' + file;
-                _fileToObject(path, cb);
+
+                // Determine if it's a file or directory
+                fs.stat(path, function(err, stats) {
+                    if (err) return cb(err);
+
+                    if (stats.isDirectory()) {
+                      cb(null, {});
+                    } else { //File
+                      _fileToObject(path, cb);
+                    }
+                });
             }, cb);
         },
         
