@@ -168,3 +168,10 @@ Installation
 ------------
 
 	npm install pow-mongodb-fixtures
+
+
+Changelog
+---------
+
+##0.6.1
+- Ignore subdirectories (hiddentao)
