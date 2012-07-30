@@ -1,9 +1,11 @@
 //Dependencies
 var fs       = require('fs'),
+    path     = require('path'),
     mongo    = require('mongodb'),
     ObjectID = require('bson').ObjectID,
-  	async	 = require('async'),
-  	_		 = require('underscore');
+    async    = require('async'),
+    _        = require('underscore'),
+    basePath = path.dirname(module.parent.filename);
 
 
 /**
@@ -310,12 +312,8 @@ var _mixedToObject = function(fixtures, cb) {
         return cb(new Error('Data must be an object, array or string (file or dir path)'));
     }
 
-    //Get the absolute dir path if a relative path was given
-    if (fixtures.substr(0, 1) !== '/') {
-        var parentPath = module.parent.filename.split('/');
-        parentPath.pop();
-        fixtures = parentPath.join('/') + '/' + fixtures;
-    }
+    // Resolve relative paths if necessary.
+    fixtures = path.resolve(basePath, fixtures);
 
     //Determine if fixtures is pointing to a file or directory
     fs.stat(fixtures, function(err, stats) {
@@ -340,11 +338,8 @@ var _mixedToObject = function(fixtures, cb) {
 var _fileToObject = function(file, cb) { 
     cb = cb || noop;
     
-    if (file.substr(0, 1) !== '/') {
-        var parentPath = module.parent.filename.split('/');
-        parentPath.pop();
-        file = parentPath.join('/') + '/' + file;
-    }
+    // Resolve relative paths if necessary.
+    file = path.resolve(basePath, file);
 
     var data = require(file);
     
@@ -362,12 +357,8 @@ var _fileToObject = function(file, cb) {
 var _dirToObject = function(dir, cb) {
     cb = cb || noop;
     
-    //Get the absolute dir path if a relative path was given
-    if (dir.substr(0, 1) !== '/') {
-        var parentPath = module.parent.filename.split('/');
-        parentPath.pop();
-        dir = parentPath.join('/') + '/' + dir;
-    }
+    // Resolve relative paths if necessary.
+    dir = path.resolve(basePath, dir);
     
     async.waterfall([
         function readDir(cb) {
