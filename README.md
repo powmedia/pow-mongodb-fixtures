@@ -173,5 +173,8 @@ Installation
 Changelog
 ---------
 
+###0.6.2
+- Windows fixes (samitny)
+
 ###0.6.1
 - Ignore subdirectories (hiddentao)
