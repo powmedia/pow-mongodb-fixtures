@@ -82,7 +82,7 @@ Loader.prototype.load = function(fixtures, cb) {
  * The result from each modifier is fed into the next modifier as its input, and so on until the final result which is
  * then inserted into the db.
  *
- * @param {Function} cb the modifier callback function with signature (collectionName, document, callback).
+ * @param {Function} cb        The modifier callback function with signature (collectionName, document, callback).
  */
 Loader.prototype.addModifier = function(cb) {
   this.modifiers.push(cb);
@@ -158,7 +158,7 @@ Loader.prototype.clear = function(collectionNames, cb) {
                 results.db.collection(name, function(err, collection) {
                     if (err) return cb(err);
 
-                    collection.remove({}, {safe: true} cb);
+                    collection.remove({}, {safe: true}, cb);
                 });
             }, cb);
         }
