@@ -158,7 +158,7 @@ Loader.prototype.clear = function(collectionNames, cb) {
                 results.db.collection(name, function(err, collection) {
                     if (err) return cb(err);
 
-                    collection.remove({}, cb);
+                    collection.remove({}, {safe: true} cb);
                 });
             }, cb);
         }
