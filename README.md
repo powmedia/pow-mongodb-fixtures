@@ -173,6 +173,9 @@ Installation
 Changelog
 ---------
 
+###0.6.3
+- Make clear be safe
+
 ###0.6.2
 - Windows fixes (samitny)
 
