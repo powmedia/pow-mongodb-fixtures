@@ -47,12 +47,13 @@ exports.connect = function(dbName, options) {
  */
 var Loader = exports.Loader = function(dbName, options) {
   options = _.extend({
+    db: dbName,
     host: 'localhost',
-    port: 27017
+    port: 27017,
+    user: null,
+    pass: null
   }, options);
   
-  this.db = new mongo.Db(dbName, new mongo.Server(options.host, options.port, {}));
-
   this.options = options;
   this.modifiers = [];
 };
@@ -229,12 +230,24 @@ var noop = function() {};
  */
 var _connect = function(loader, cb) {
   if (loader.client) return cb(null, loader.client);
+
+  var options = loader.options;
+
+  var db = new mongo.Db(options.db, new mongo.Server(options.host, options.port, {}));
   
-  loader.db.open(function(err, client) {
+  db.open(function(err, db) {
     if (err) return cb(err);
-    
-    loader.client = client;
-    cb(null, client);
+
+    loader.client = db;
+
+    //Authenticate if required
+    if (!options.user) return cb(null, db);
+
+    db.authenticate(options.user, options.pass, function(err, result) {
+      if (err) return cb(err);
+      
+      cb(null, db);
+    });
   });
 };
 

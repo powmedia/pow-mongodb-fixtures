@@ -59,6 +59,8 @@ Options:
 
 - host (Default: localhost)
 - port (Default: 27017)
+- user
+- pass
 
 Usage:
 
@@ -172,6 +174,9 @@ Installation
 
 Changelog
 ---------
+
+###0.6.4
+- Add username and password connect options
 
 ###0.6.3
 - Make clear be safe
