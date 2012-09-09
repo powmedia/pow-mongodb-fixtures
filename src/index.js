@@ -13,12 +13,12 @@ var fs       = require('fs'),
  * @param {String|ObjectId}  Optional hard-coded Object ID as string
  */
 exports.createObjectId = function(id) {
-    if (!id) return new ObjectID();
+  if (!id) return new ObjectID();
 
-    //Allow cloning ObjectIDs
-    if (id.constructor.name == 'ObjectID') id = id.toString();
+  //Allow cloning ObjectIDs
+  if (id.constructor.name == 'ObjectID') id = id.toString();
 
-    return new ObjectID(id);
+  return new ObjectID(id);
 };
 
 
@@ -30,7 +30,7 @@ exports.createObjectId = function(id) {
  * @param {Object}  Connection options: host ('localhost'), port (27017)
  */
 exports.connect = function(dbName, options) {
-    return new Loader(dbName, options);
+  return new Loader(dbName, options);
 }
 
 
@@ -38,20 +38,23 @@ exports.connect = function(dbName, options) {
 /**
  * Loader constructor
  * 
- * @param {String}  Database name
- * @param {Object}  Connection options: host ('localhost'), port (27017)
+ * @param {String} dbName           Database name
+ * @param {Object} [options]        Connection options
+ * @param {String} [options.host]   Default: 'localhost'
+ * @param {Number} [options.port]   Defualt: 27017
+ * @param {String} [options.user]   Username
+ * @param {String} [options.pass]   Password
  */
 var Loader = exports.Loader = function(dbName, options) {
-    options = options || {};
-    
-    var host = options.host || 'localhost',
-        port = options.port || 27017;
-    
-    //Connect
-    this.db = new mongo.Db(dbName, new mongo.Server(host, port, {}));
+  options = _.extend({
+    host: 'localhost',
+    port: 27017
+  }, options);
+  
+  this.db = new mongo.Db(dbName, new mongo.Server(options.host, options.port, {}));
 
-    // Modifiers
-    this.modifiers = [];
+  this.options = options;
+  this.modifiers = [];
 };
 
 
@@ -64,13 +67,13 @@ var Loader = exports.Loader = function(dbName, options) {
  * @param {Function}    Callback(err)
  */
 Loader.prototype.load = function(fixtures, cb) {
-    var self = this;
+  var self = this;
+  
+  _mixedToObject(fixtures, function(err, data) {
+    if (err) return cb(err);
     
-    _mixedToObject(fixtures, function(err, data) {
-        if (err) return cb(err);
-        
-        _loadData(self, data, cb);
-    });
+    _loadData(self, data, cb);
+  });
 };
 
 
@@ -99,70 +102,70 @@ Loader.prototype.addModifier = function(cb) {
  * @param {Function}        Callback(err)
  */
 Loader.prototype.clear = function(collectionNames, cb) {
-    //Normalise arguments
-    if (arguments.length == 1) { //cb
-      cb = collectionNames;
-      collectionNames = null;
+  //Normalise arguments
+  if (arguments.length == 1) { //cb
+    cb = collectionNames;
+    collectionNames = null;
+  }
+  
+  var self = this;
+
+  var results = {};
+
+  async.series([
+    function connect(cb) {
+      _connect(self, function(err, db) {
+        if (err) return cb(err);
+
+        results.db = db;
+        cb();
+      })
+    },
+
+    function getCollectionNames(cb) {
+      //If collectionNames not passed we clear all of them
+      if (!collectionNames) {
+        results.db.collectionNames(function(err, names) {
+          if (err) return cb(err);
+
+          //Get the real collection names
+          names = _.map(names, function(nameObj) {
+            var fullName = nameObj.name,
+                parts = fullName.split('.');
+
+            //Remove DB name
+            parts.shift();
+
+            //Skip system collections
+            if (parts[0] == 'system' || parts[0] == 'local') return;
+
+            return parts.join('.');
+          });
+
+          results.collectionNames = _.compact(names);
+
+          cb();
+        })
+      } else {
+        //Convert single collection as string to array
+        if (!_.isArray(collectionNames)) collectionNames = [collectionNames];
+
+        results.collectionNames = collectionNames;
+
+        cb();
+      }
+    },
+
+    function clearCollections() {
+      async.forEach(results.collectionNames, function(name, cb) {
+        results.db.collection(name, function(err, collection) {
+          if (err) return cb(err);
+
+          collection.remove({}, {safe: true}, cb);
+        });
+      }, cb);
     }
-    
-    var self = this;
-
-    var results = {};
-
-    async.series([
-        function connect(cb) {
-            _connect(self, function(err, db) {
-                if (err) return cb(err);
-
-                results.db = db;
-                cb();
-            })
-        },
-
-        function getCollectionNames(cb) {
-            //If collectionNames not passed we clear all of them
-            if (!collectionNames) {
-                results.db.collectionNames(function(err, names) {
-                    if (err) return cb(err);
-
-                    //Get the real collection names
-                    names = _.map(names, function(nameObj) {
-                        var fullName = nameObj.name,
-                            parts = fullName.split('.');
-
-                        //Remove DB name
-                        parts.shift();
-
-                        //Skip system collections
-                        if (parts[0] == 'system' || parts[0] == 'local') return;
-
-                        return parts.join('.');
-                    });
-
-                    results.collectionNames = _.compact(names);
-
-                    cb();
-                })
-            } else {
-                //Convert single collection as string to array
-                if (!_.isArray(collectionNames)) collectionNames = [collectionNames];
-
-                results.collectionNames = collectionNames;
-
-                cb();
-            }
-        },
-
-        function clearCollections() {
-            async.forEach(results.collectionNames, function(name, cb) {
-                results.db.collection(name, function(err, collection) {
-                    if (err) return cb(err);
-
-                    collection.remove({}, {safe: true}, cb);
-                });
-            }, cb);
-        }
-    ], cb)
+  ], cb)
 };
 
 
@@ -175,14 +178,14 @@ Loader.prototype.clear = function(collectionNames, cb) {
  * @param {Function}        Callback(err)
  */
 Loader.prototype.clearAllAndLoad = function(fixtures, cb) {
-    var self = this;
-    
-    self.clear(function(err) {
-	    if (err) return cb(err);
+  var self = this;
+  
+  self.clear(function(err) {
+    if (err) return cb(err);
 
-	    self.load(fixtures, function(err) {
-	        cb(err);
-	    });
+    self.load(fixtures, function(err) {
+      cb(err);
+    });
 	});
 };
 
@@ -196,19 +199,19 @@ Loader.prototype.clearAllAndLoad = function(fixtures, cb) {
  * @param {Function}        Callback(err)
  */
 Loader.prototype.clearAndLoad = function(fixtures, cb) {
-    var self = this;
+  var self = this;
+  
+  _mixedToObject(fixtures, function(err, objData) {
+    if (err) return cb(err);
     
-    _mixedToObject(fixtures, function(err, objData) {
-        if (err) return cb(err);
-        
-        var collections = Object.keys(objData);
-        
-        self.clear(collections, function(err) {
-    	    if (err) return cb(err);
+    var collections = Object.keys(objData);
+      
+    self.clear(collections, function(err) {
+      if (err) return cb(err);
 
-    	    _loadData(self, objData, cb);
-    	});
-    });
+      _loadData(self, objData, cb);
+  	});
+  });
 };
 
 
@@ -305,26 +308,26 @@ var _loadData = function(loader, data, cb) {
  * @api private
  */
 var _mixedToObject = function(fixtures, cb) {
-    if (typeof fixtures == 'object') return cb(null, fixtures);
+  if (typeof fixtures == 'object') return cb(null, fixtures);
 
-    //As it's not an object, it should now be a file or directory path (string)
-    if (typeof fixtures != 'string') {
-        return cb(new Error('Data must be an object, array or string (file or dir path)'));
+  //As it's not an object, it should now be a file or directory path (string)
+  if (typeof fixtures != 'string') {
+    return cb(new Error('Data must be an object, array or string (file or dir path)'));
+  }
+
+  // Resolve relative paths if necessary.
+  fixtures = path.resolve(basePath, fixtures);
+
+  //Determine if fixtures is pointing to a file or directory
+  fs.stat(fixtures, function(err, stats) {
+    if (err) return cb(err);
+
+    if (stats.isDirectory()) {
+      _dirToObject(fixtures, cb);
+    } else { //File
+      _fileToObject(fixtures, cb);
     }
-
-    // Resolve relative paths if necessary.
-    fixtures = path.resolve(basePath, fixtures);
-
-    //Determine if fixtures is pointing to a file or directory
-    fs.stat(fixtures, function(err, stats) {
-        if (err) return cb(err);
-
-        if (stats.isDirectory()) {
-            _dirToObject(fixtures, cb);
-        } else { //File
-            _fileToObject(fixtures, cb);
-        }
-    });
+  });
 }
 
 
@@ -336,14 +339,14 @@ var _mixedToObject = function(fixtures, cb) {
  * @api private
  */
 var _fileToObject = function(file, cb) { 
-    cb = cb || noop;
-    
-    // Resolve relative paths if necessary.
-    file = path.resolve(basePath, file);
+  cb = cb || noop;
+  
+  // Resolve relative paths if necessary.
+  file = path.resolve(basePath, file);
 
-    var data = require(file);
-    
-    cb(null, data);
+  var data = require(file);
+  
+  cb(null, data);
 }
 
 
@@ -355,59 +358,57 @@ var _fileToObject = function(file, cb) {
  * @api private
  */
 var _dirToObject = function(dir, cb) {
-    cb = cb || noop;
+  cb = cb || noop;
+  
+  // Resolve relative paths if necessary.
+  dir = path.resolve(basePath, dir);
+  
+  async.waterfall([
+    function readDir(cb) {
+      fs.readdir(dir, cb)
+    },
     
-    // Resolve relative paths if necessary.
-    dir = path.resolve(basePath, dir);
+    function filesToObjects(files, cb) {
+      async.map(files, function processFile(file, cb) {
+        var path = dir + '/' + file;
+
+        // Determine if it's a file or directory
+        fs.stat(path, function(err, stats) {
+          if (err) return cb(err);
+
+          if (stats.isDirectory()) {
+            cb(null, {});
+          } else { //File
+            _fileToObject(path, cb);
+          }
+        });
+      }, cb);
+    },
     
-    async.waterfall([
-        function readDir(cb) {
-            fs.readdir(dir, cb)
-        },
-        
-        function filesToObjects(files, cb) {
-            async.map(files, function processFile(file, cb) {
-                var path = dir + '/' + file;
-
-                // Determine if it's a file or directory
-                fs.stat(path, function(err, stats) {
-                    if (err) return cb(err);
-
-                    if (stats.isDirectory()) {
-                      cb(null, {});
-                    } else { //File
-                      _fileToObject(path, cb);
-                    }
-                });
-            }, cb);
-        },
-        
-        function combineObjects(results, cb) {
-            //console.log('RESULTS', results);
-            
-            //Where all combined data will be kept, keyed by collection name
-            var collections = {};
-            
-            results.forEach(function(fileObj) {
-                _.each(fileObj, function(docs, name) {
-                    //Convert objects to array
-                    if (_.isObject(docs)) {
-                        docs = _.values(docs);
-                    }
-                    
-                    //Create array for collection if it doesn't exist yet
-                    if (!collections[name]) collections[name] = [];
-                    
-                    //Add docs to collection
-                    collections[name] = collections[name].concat(docs);
-                });
-            });
-            
-            cb(null, collections)
-        }
-    ], function(err, combinedData) {
-        if (err) return cb(err);
-        
-        cb(null, combinedData);
-    });
+    function combineObjects(results, cb) {      
+      //Where all combined data will be kept, keyed by collection name
+      var collections = {};
+      
+      results.forEach(function(fileObj) {
+        _.each(fileObj, function(docs, name) {
+          //Convert objects to array
+          if (_.isObject(docs)) {
+            docs = _.values(docs);
+          }
+          
+          //Create array for collection if it doesn't exist yet
+          if (!collections[name]) collections[name] = [];
+          
+          //Add docs to collection
+          collections[name] = collections[name].concat(docs);
+        });
+      });
+      
+      cb(null, collections)
+    }
+  ], function(err, combinedData) {
+    if (err) return cb(err);
+    
+    cb(null, combinedData);
+  });
 };
