@@ -41,9 +41,10 @@ exports.connect = function(dbName, options) {
  * @param {String} dbName           Database name
  * @param {Object} [options]        Connection options
  * @param {String} [options.host]   Default: 'localhost'
- * @param {Number} [options.port]   Defualt: 27017
+ * @param {Number} [options.port]   Default: 27017
  * @param {String} [options.user]   Username
  * @param {String} [options.pass]   Password
+ * @param {Boolean} [options.safe]  Default: false
  */
 var Loader = exports.Loader = function(dbName, options) {
   options = _.extend({
@@ -51,7 +52,8 @@ var Loader = exports.Loader = function(dbName, options) {
     host: 'localhost',
     port: 27017,
     user: null,
-    pass: null
+    pass: null,
+    safe: false
   }, options);
   
   this.options = options;
@@ -233,7 +235,7 @@ var _connect = function(loader, cb) {
 
   var options = loader.options;
 
-  var db = new mongo.Db(options.db, new mongo.Server(options.host, options.port, {}));
+  var db = new mongo.Db(options.db, new mongo.Server(options.host, options.port, {}), {safe: options.safe});
   
   db.open(function(err, db) {
     if (err) return cb(err);
