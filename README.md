@@ -176,6 +176,12 @@ Installation
 Changelog
 ---------
 
+###0.7.1
+- Add 'safe' option (donnut)
+
+###0.7.0
+- Add user and password options for connecting to authenticated/remote DBs
+
 ###0.6.4
 - Add username and password connect options
 
