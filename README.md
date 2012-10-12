@@ -61,6 +61,7 @@ Options:
 - port (Default: 27017)
 - user
 - pass
+- safe (Default: false)
 
 Usage:
 
