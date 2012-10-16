@@ -47,6 +47,20 @@ You can also load fixtures as an object where each document is keyed, in case yo
     }
 
 
+CLI usage
+=========
+
+A CLI program is included for quickly loading fixture files. To use it install the module globally:
+
+    npm install pow-mongodb-fixtures -g
+
+Then use the program to install a file or directory:
+
+    mongofixtures <dbname> <fixture file>
+
+    mongofixtures appdb fixtures/users.js
+
+
 API
 ===
 
