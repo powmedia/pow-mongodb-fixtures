@@ -7,6 +7,9 @@
       "type" : "git", 
       "url" : "http://github.com/powmedia/pow-mongodb-fixtures.git"
   },
+  "bin": {
+    "mongofixtures": "./bin/mongofixtures"
+  },
   "engines": {
     "node": ">= 0.4.1"
   },
