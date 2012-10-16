@@ -1,0 +1,24 @@
+#!/usr/bin/env node
+
+var argv = require('optimist')
+    .default({
+      h: 'localhost', //host
+      p: 27017,       //port
+      u: null,        //username
+      p: null         //password
+    })
+    .argv;
+
+var dbName = argv._[0],
+    file = process.cwd() + '/' + argv._[1];
+
+var fixtures = require('pow-mongodb-fixtures').connect(dbName);
+
+fixtures.load(file, function(err) {
+  if (err) {
+    console.error(err);
+    return process.exit(-1);
+  }
+
+  process.exit(0);
+});
