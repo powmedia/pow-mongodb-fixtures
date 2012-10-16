@@ -190,6 +190,9 @@ Installation
 Changelog
 ---------
 
+###0.8.1
+- Add mongofixtures CLI program
+
 ###0.7.1
 - Add 'safe' option (donnut)
 
