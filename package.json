@@ -14,7 +14,8 @@
 		"async": "0.1.15",
 		"mongodb": ">=0.9.9-8",
 		"underscore": ">=1.2.2",
-		"bson": ">=0.0.4"
+		"bson": ">=0.0.4",
+    "optimist": "0.3.5"
   },
 	"devDependencies": {
 		"nodeunit": "0.6.4"
