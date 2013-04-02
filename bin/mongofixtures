@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 
-var argv = require('optimist').argv;
+var argv = require('optimist').argv,
+    path = require('path');
 
 var dbName = argv._[0],
-    file = process.cwd() + '/' + argv._[1];
+    file = path.resolve(process.cwd(), argv._[1]);
 
 var fixtures = require('pow-mongodb-fixtures').connect(dbName);
 
