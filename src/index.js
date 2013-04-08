@@ -217,7 +217,19 @@ Loader.prototype.clearAndLoad = function(fixtures, cb) {
   });
 };
 
+/**
+ * Close the connection to the DB
+ *
+ * @param {Function} Callback(err)
+ */
+Loader.prototype.close = function(cb) {
+  var self = this;
 
+  _close(self, function (err) {
+    if (err) return cb(err);
+    cb();
+  });
+};
 
 
 //PRIVATE METHODS
@@ -253,6 +265,23 @@ var _connect = function(loader, cb) {
   });
 };
 
+/**
+ * Close the connection to the database, if it exists
+ *
+ * @param {Function} Callback(err)
+ */
+
+var _close = function(loader, cb) {
+  var db = loader.client;
+  if (db) {
+    db.close(function (err, results) {
+      if (err) return cb(err);
+      cb(null);
+    });
+  } else {
+    cb(new Error("No connection found!"));
+  }
+};
 
 /**
  * Inserts the given data (object or array) as new documents
