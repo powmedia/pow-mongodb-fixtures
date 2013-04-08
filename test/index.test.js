@@ -38,8 +38,8 @@ exports['init'] = function(test) {
 		db.dropDatabase(test.done);
 	});
 };
-	
-	
+
+
 exports['createObjectId'] = {
 	'with ID as string': function(test) {
 		var objId = id('4eca80fae4af59f55d000020');
