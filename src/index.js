@@ -1,5 +1,6 @@
 //Dependencies
 var fs       = require('fs'),
+    url      = require('url'),
     path     = require('path'),
     mongo    = require('mongodb'),
     ObjectID = require('bson').ObjectID,
@@ -26,11 +27,11 @@ exports.createObjectId = function(id) {
 /**
  * Main method for connecting to the database and returning the fixture loader (Loader)
  * 
- * @param {String}  Database name
- * @param {Object}  Connection options: host ('localhost'), port (27017)
+ * @param {String} dbOrUri    Database name or connection URI
+ * @param {Object} [options]  Connection options: host ('localhost'), port (27017)
  */
-exports.connect = function(dbName, options) {
-  return new Loader(dbName, options);
+exports.connect = function(db, options) {
+  return new Loader(db, options);
 }
 
 
@@ -38,7 +39,7 @@ exports.connect = function(dbName, options) {
 /**
  * Loader constructor
  * 
- * @param {String} dbName           Database name
+ * @param {String} dbOrUri          Database name or connection URI
  * @param {Object} [options]        Connection options
  * @param {String} [options.host]   Default: 'localhost'
  * @param {Number} [options.port]   Default: 27017
@@ -46,15 +47,33 @@ exports.connect = function(dbName, options) {
  * @param {String} [options.pass]   Password
  * @param {Boolean} [options.safe]  Default: false
  */
-var Loader = exports.Loader = function(dbName, options) {
-  options = _.extend({
-    db: dbName,
-    host: 'localhost',
-    port: 27017,
-    user: null,
-    pass: null,
-    safe: false
-  }, options);
+var Loader = exports.Loader = function(dbOrUri, options) {
+  //Try parsing uri
+  var parts = url.parse(dbOrUri);
+
+  //Using connection URI
+  if (parts.protocol) {
+    options = _.extend({
+      db: parts.path.replace('/', ''),
+      host: parts.hostname,
+      port: parseInt(parts.port, 10),
+      user: parts.auth ? parts.auth.split(':')[0] : null,
+      pass: parts.auth ? parts.auth.split(':')[1] : null,
+      safe: true
+    }, options);
+  }
+
+  //Using DB name
+  else {
+    options = _.extend({
+      db: dbOrUri,
+      host: 'localhost',
+      port: 27017,
+      user: null,
+      pass: null,
+      safe: true
+    }, options);
+  }
   
   this.options = options;
   this.modifiers = [];
@@ -456,3 +475,34 @@ var _dirToObject = function(dir, cb) {
     cb(null, combinedData);
   });
 };
+
+
+/**
+ * Builds the full connection URI
+ *
+ * @param {Object} options
+ * 
+ * @return {String}
+ */
+var _buildConnectionUri = function(options) {
+  var parts = ['mongodb://'];
+
+  if (options.user) parts.push(options.user);
+
+  if (options.pass) {
+    parts.push(':');
+    parts.push(options.pass);
+  }
+
+  if (options.user) {
+    parts.push('@');
+  }
+
+  parts.push(options.host);
+  parts.push(':');
+  parts.push(options.port);
+  parts.push('/');
+  parts.push(options.db);
+
+  return parts.join('');
+}

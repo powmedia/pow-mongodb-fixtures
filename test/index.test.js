@@ -72,6 +72,38 @@ exports['createObjectId'] = {
 };
 
 
+exports['connect with dbName'] = function(test) {
+  var loader = fixtures.connect(dbName);
+
+  var options = loader.options;
+
+  test.same(options.db, 'pow-mongodb-fixtures-test');
+  test.same(options.host, 'localhost');
+  test.same(options.port, 27017);
+  test.same(options.user, null);
+  test.same(options.pass, null);
+  test.same(options.safe, true);
+
+  test.done();
+}
+
+
+exports['connect with uri'] = function(test) {
+  var loader = fixtures.connect('mongodb://username:password@example.com:9191/dbname');
+
+  var options = loader.options;
+
+  test.same(options.db, 'dbname');
+  test.same(options.host, 'example.com');
+  test.same(options.port, 9191);
+  test.same(options.user, 'username');
+  test.same(options.pass, 'password');
+  test.same(options.safe, true);
+
+  test.done();
+}
+
+
 exports['works when referencing an objectID in different scope'] = {
   'when using this': function(test) {
     var todo = 'TODO: Havent been able to replicate error yet:';
