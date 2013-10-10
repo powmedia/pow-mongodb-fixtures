@@ -436,7 +436,7 @@ var _dirToObject = function(dir, cb) {
         var path = dir + '/' + file;
 
         // Do not include files not ending in .js
-        if (path.match(/\.js$/) === null) {
+        if (path.match(/\.(js|json)$/) === null) {
           return cb(null, {});
         }
 
