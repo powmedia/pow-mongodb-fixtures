@@ -1,0 +1,1 @@
+This should stuff up the fixtures loader if it tries to load it (it shouldn't.)
