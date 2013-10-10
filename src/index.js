@@ -435,6 +435,11 @@ var _dirToObject = function(dir, cb) {
       async.map(files, function processFile(file, cb) {
         var path = dir + '/' + file;
 
+        // Do not include files not ending in .js
+        if (path.match(/\.js$/) === null) {
+          return cb(null, {});
+        }
+
         // Determine if it's a file or directory
         fs.stat(path, function(err, stats) {
           if (err) return cb(err);
