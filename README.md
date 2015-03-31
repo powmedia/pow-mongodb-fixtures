@@ -187,6 +187,14 @@ Installation
 	npm install pow-mongodb-fixtures
 
 
+Test
+------------
+
+use ``nodeunit`` to run unit test
+
+	$ npm i
+	$ ./node_modules/nodeunit/bin/nodeunit test/index.test.js
+
 Changelog
 ---------
 
