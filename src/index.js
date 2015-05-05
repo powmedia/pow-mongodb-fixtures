@@ -114,6 +114,32 @@ Loader.prototype.addModifier = function(cb) {
 };
 
 
+/**
+ * loader.dropDatabase(cb) : Really drops the database
+ * 
+ * @param {Function} cb
+ */
+Loader.prototype.dropDatabase = function(cb) {
+  var self = this;
+
+  var results = {};
+
+  async.series([
+    function connect(cb) {
+      _connect(self, function(err, db) {
+        if (err) return cb(err);
+
+        results.db = db;
+        cb();
+      })
+    },
+
+    function dropDatabase(cb) {
+      results.db.dropDatabase(cb);
+    }
+  ], cb);
+};
+
 
 /**
  * loader.clear(cb) : Clears (drops) the entire database
