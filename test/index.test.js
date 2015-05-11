@@ -586,10 +586,8 @@ exports['clearAndLoad'] = {
 
 
 //Close DB connection and end process when done
-exports['exit'] = function(test) {
-    db.close();
-
-    test.done();
-
-    process.nextTick(process.exit);
-}
+exports['exit'] =  {
+    setUp: function(done) {
+        db.close(done);
+    }
+};
