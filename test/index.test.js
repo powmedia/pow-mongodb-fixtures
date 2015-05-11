@@ -1,372 +1,373 @@
 //Nodeunit tests
 
 var fixtures = require('../src/index.js'),
-	id = fixtures.createObjectId,
-	mongo = require('mongodb'),
-  fs = require('fs'),
-	async = require('async'),
-	_ = require('underscore');
+    id = fixtures.createObjectId,
+    mongo = require('mongodb'),
+    async = require('async'),
+    _ = require('lodash');
 
 var dbName = 'pow-mongodb-fixtures-test',
-	loader = fixtures.connect(dbName),
-	server = new mongo.Db(dbName, new mongo.Server('127.0.0.1', 27017, {})),
-	db;
-	
-	
+    loader = fixtures.connect(dbName),
+    server = new mongo.Db(dbName, new mongo.Server('127.0.0.1', 27017, {})),
+    db;
+
+
 function loadCollection(name, cb) {
-	db.collection(name, function(err, collection) {
-		if (err) return cb(err);
-		
-		collection.find(function(err, cursor) {
-			if (err) return cb(err);
-			
-			cursor.toArray(function(err, docs) {
-				if (err) return cb(err);
-				
-				cb(null, docs);
-			});
-		});
-	});
+    db.collection(name, function(err, collection) {
+        if (err) return cb(err);
+
+        collection.find(function(err, cursor) {
+            if (err) return cb(err);
+
+            cursor.toArray(function(err, docs) {
+                if (err) return cb(err);
+
+                cb(null, docs);
+            });
+        });
+    });
 }
 
 exports['init'] = function(test) {
-	server.open(function(err, openDb) {
-		if (err) return test.done(err);
-		
-		db = openDb;
-		
-		db.dropDatabase(test.done);
-	});
+    server.open(function(err, openDb) {
+        if (err) return test.done(err);
+
+        db = openDb;
+
+        db.dropDatabase(test.done);
+    });
 };
 
 
 exports['createObjectId'] = {
-	'with ID as string': function(test) {
-		var objId = id('4eca80fae4af59f55d000020');
-		
-		test.same(objId.constructor.name, 'ObjectID');
-		test.same(objId.toString(), '4eca80fae4af59f55d000020');
-		
-		test.done();
-	},
-	
-	'with existing ID': function(test) {
-	  var id1 = id();
-	  
-	  var id2 = id(id1);
-	  
-		test.same(id2.constructor.name, 'ObjectID');
-		test.same(id2.toString(), id1.toString());
-		
-		test.done();
-	},
-	
-	'without ID': function(test) {
-		var objId = id();
-		
-		test.same(objId.constructor.name, 'ObjectID');
-		test.same(objId.toString().length, 24);
-		
-		test.done();
-	}
+    'with ID as string': function(test) {
+        var objId = id('4eca80fae4af59f55d000020');
+
+        test.same(objId.constructor.name, 'ObjectID');
+        test.same(objId.toString(), '4eca80fae4af59f55d000020');
+
+        test.done();
+    },
+
+    'with existing ID': function(test) {
+        var id1 = id();
+
+        var id2 = id(id1);
+
+        test.same(id2.constructor.name, 'ObjectID');
+        test.same(id2.toString(), id1.toString());
+
+        test.done();
+    },
+
+    'without ID': function(test) {
+        var objId = id();
+
+        test.same(objId.constructor.name, 'ObjectID');
+        test.same(objId.toString().length, 24);
+
+        test.done();
+    }
 };
 
 
 exports['connect with dbName'] = function(test) {
-  var loader = fixtures.connect(dbName);
+    var loader = fixtures.connect(dbName);
 
-  var options = loader.options;
+    var options = loader.options;
 
-  test.same(options.db, 'pow-mongodb-fixtures-test');
-  test.same(options.host, 'localhost');
-  test.same(options.port, 27017);
-  test.same(options.user, null);
-  test.same(options.pass, null);
-  test.same(options.safe, true);
+    test.same(options.db, 'pow-mongodb-fixtures-test');
+    test.same(options.host, 'localhost');
+    test.same(options.port, 27017);
+    test.same(options.user, null);
+    test.same(options.pass, null);
+    test.same(options.safe, true);
 
-  test.done();
+    test.done();
 }
 
 
 exports['connect with uri'] = function(test) {
-  var loader = fixtures.connect('mongodb://username:password@example.com:9191/dbname');
+    var loader = fixtures.connect('mongodb://username:password@example.com:9191/dbname');
 
-  var options = loader.options;
+    var options = loader.options;
 
-  test.same(options.db, 'dbname');
-  test.same(options.host, 'example.com');
-  test.same(options.port, 9191);
-  test.same(options.user, 'username');
-  test.same(options.pass, 'password');
-  test.same(options.safe, true);
+    test.same(options.db, 'dbname');
+    test.same(options.host, 'example.com');
+    test.same(options.port, 9191);
+    test.same(options.user, 'username');
+    test.same(options.pass, 'password');
+    test.same(options.safe, true);
 
-  test.done();
+    test.done();
 }
 
 
 exports['works when referencing an objectID in different scope'] = {
-  'when using this': function(test) {
-    var todo = 'TODO: Havent been able to replicate error yet:';
-    todo += 'Sometimes when referencing an ID that was generated elsewhere, it gets encoded incorrectly.';
-    todo += 'Test needs to fail first so it can be fixed.';
-    
-    console.log(todo);
-    return test.done();
-    
-    var self = this;
-    
-    var data = {};
-  
-    var users = data.users = {
-      sterling: {
-        _id: id(), 
-        name: 'Sterling'
-      }
-    };
-    
-	  var posts = data.posts = [
-      {
-        _id: id(),
-        author: users.sterling._id,
-        text: 'Danger Zone!'
-      }
-    ];
-	  
-	  loader.load(data, function(err) {
-	    if (err) return test.done(err);
-      
-      //TODO: Try to replicate problem from before. Maybe have to load setup fixture into DB
-      test.same(users.sterling._id.toString(), posts[0].author.toString());
+    'when using this': function(test) {
+        var todo = 'TODO: Havent been able to replicate error yet:';
+        todo += 'Sometimes when referencing an ID that was generated elsewhere, it gets encoded incorrectly.';
+        todo += 'Test needs to fail first so it can be fixed.';
 
-      process.exit();
-  	  test.done();
-	  });
-  }
+        console.log(todo);
+        return test.done();
+
+        var self = this;
+
+        var data = {};
+
+        var users = data.users = {
+            sterling: {
+                _id: id(),
+                name: 'Sterling'
+            }
+        };
+
+        var posts = data.posts = [
+            {
+                _id: id(),
+                author: users.sterling._id,
+                text: 'Danger Zone!'
+            }
+        ];
+
+        loader.load(data, function(err) {
+            if (err) return test.done(err);
+
+            //TODO: Try to replicate problem from before. Maybe have to load setup fixture into DB
+            test.same(users.sterling._id.toString(), posts[0].author.toString());
+
+            process.exit();
+            test.done();
+        });
+    }
 };
 
 
 exports['add modifier'] = function(test) {
-  var l = fixtures.connect(dbName);
+    var l = fixtures.connect(dbName);
 
-  test.same([], l.modifiers);
+    test.same([], l.modifiers);
 
-  var modifier = function(col, doc, cb) { cb(null) };
+    var modifier = function(col, doc, cb) {
+        cb(null)
+    };
 
-  l.addModifier(modifier);
+    l.addModifier(modifier);
 
-  test.same([modifier], l.modifiers);
+    test.same(1, l.modifiers.length);
 
-  test.done();
+    test.done();
 };
 
 
 exports['load'] = {
-	setUp: function(done) {
-		db.dropDatabase(done);
-	},
-	
-	'array': function(test) {
-		test.expect(2);
-		
-		var data = {
-			southpark: [
-				{ name: 'Eric' },
-				{ name: 'Butters' },
-				{ name: 'Kenny' }
-			],
-			boredToDeath: [
-				{ name: 'Jonathan' },
-				{ name: 'Ray' },
-				{ name: 'George' }
-			]
-		};
-		
-		loader.load(data, function(err) {
-			if (err) return test.done(err);
-			
-			async.parallel([
-				function(next) {
-					loadCollection('southpark', function(err, docs) {
-						if (err) return next(err);
-						
-						var names = _.pluck(docs, 'name');
-						
-						test.same(names.sort(), ['Eric', 'Butters', 'Kenny'].sort());
-						
-						next();
-					});
-				},
-				function(next) {
-					loadCollection('boredToDeath', function(err, docs) {
-						if (err) return next(err);
-						
-						var names = _.pluck(docs, 'name');
-						
-						test.same(names.sort(), ['Jonathan', 'Ray', 'George'].sort());
-
-						next();
-					});
-				}
-			], test.done);
-		});
-	},
-	
-	'object': function(test) {
-		test.expect(2);
-		
-		var data = {
-			southpark: {
-				eric: { name: 'Eric' },
-				butters: { name: 'Butters' },
-				kenny: { name: 'Kenny' }
-			},
-			boredToDeath: {
-				jonathan: { name: 'Jonathan' },
-				ray: { name: 'Ray' },
-				george: { name: 'George' }
-			}
-		};
-		
-		loader.load(data, function(err) {
-			if (err) return test.done(err);
-
-			async.parallel([
-				function(next) {
-					loadCollection('southpark', function(err, docs) {
-						if (err) return next(err);
-						
-						var names = _.pluck(docs, 'name');
-						
-						test.same(names.sort(), ['Eric', 'Butters', 'Kenny'].sort());
-						
-						next();
-					});
-				},
-				function(next) {
-					loadCollection('boredToDeath', function(err, docs) {
-						if (err) return next(err);
-						
-						var names = _.pluck(docs, 'name');
-						
-						test.same(names.sort(), ['Jonathan', 'Ray', 'George'].sort());
-
-						next();
-					});
-				}
-			], test.done);
-		});
-	},
-	
-	'file': function(test) {
-		loader.load('./fixtures/archer.js', function(err) {
-			if (err) return test.done(err);
-			
-			loadCollection('archer', function(err, docs) {
-				if (err) return next(err);
-				
-				var names = _.pluck(docs, 'name');
-				
-				test.same(names.sort(), ['Sterling', 'Lana', 'Cheryl'].sort());
-				
-				test.done();
-			});
-		});
-	},
-	
-	'directory': {
-    'default' : function(test) {
-      loader.load('./fixtures', function(err) {
-    			if (err) return test.done(err);
-
-    			async.parallel([
-    				function(next) {
-    					loadCollection('archer', function(err, docs) {
-    						if (err) return next(err);
-
-    						var names = _.pluck(docs, 'name');
-
-    						test.same(names.sort(), ['Sterling', 'Lana', 'Cheryl'].sort());
-
-    						next();
-    					});
-    				},
-    				function(next) {
-    					loadCollection('southpark', function(err, docs) {
-    						if (err) return next(err);
-
-    						var names = _.pluck(docs, 'name');
-
-    						var expected = ['Eric', 'Butters', 'Kenny', 'Stan', 'Towelie'];
-
-    						test.same(names.sort(), expected.sort());
-
-    						next();
-    					});
-    				}
-    			], test.done);
-    		});
+    setUp: function(done) {
+        db.dropDatabase(done);
     },
-    'ignore sub directories' : function (test) {
-      loader.load('./fixtures_with_subdir', function(err) {
-          if (err) return test.done(err);
 
-          async.parallel([
-            function(next) {
-              loadCollection('archer', function(err, docs) {
+    'array': function(test) {
+        test.expect(2);
+
+        var data = {
+            southpark: [
+                {name: 'Eric'},
+                {name: 'Butters'},
+                {name: 'Kenny'}
+            ],
+            boredToDeath: [
+                {name: 'Jonathan'},
+                {name: 'Ray'},
+                {name: 'George'}
+            ]
+        };
+
+        loader.load(data, function(err) {
+            if (err) return test.done(err);
+
+            async.parallel([
+                function(next) {
+                    loadCollection('southpark', function(err, docs) {
+                        if (err) return next(err);
+
+                        var names = _.pluck(docs, 'name');
+
+                        test.same(names.sort(), ['Eric', 'Butters', 'Kenny'].sort());
+
+                        next();
+                    });
+                },
+                function(next) {
+                    loadCollection('boredToDeath', function(err, docs) {
+                        if (err) return next(err);
+
+                        var names = _.pluck(docs, 'name');
+
+                        test.same(names.sort(), ['Jonathan', 'Ray', 'George'].sort());
+
+                        next();
+                    });
+                }
+            ], test.done);
+        });
+    },
+
+    'object': function(test) {
+        test.expect(2);
+
+        var data = {
+            southpark: {
+                eric: {name: 'Eric'},
+                butters: {name: 'Butters'},
+                kenny: {name: 'Kenny'}
+            },
+            boredToDeath: {
+                jonathan: {name: 'Jonathan'},
+                ray: {name: 'Ray'},
+                george: {name: 'George'}
+            }
+        };
+
+        loader.load(data, function(err) {
+            if (err) return test.done(err);
+
+            async.parallel([
+                function(next) {
+                    loadCollection('southpark', function(err, docs) {
+                        if (err) return next(err);
+
+                        var names = _.pluck(docs, 'name');
+
+                        test.same(names.sort(), ['Eric', 'Butters', 'Kenny'].sort());
+
+                        next();
+                    });
+                },
+                function(next) {
+                    loadCollection('boredToDeath', function(err, docs) {
+                        if (err) return next(err);
+
+                        var names = _.pluck(docs, 'name');
+
+                        test.same(names.sort(), ['Jonathan', 'Ray', 'George'].sort());
+
+                        next();
+                    });
+                }
+            ], test.done);
+        });
+    },
+
+    'file': function(test) {
+        loader.load('./fixtures/archer.js', function(err) {
+            if (err) return test.done(err);
+
+            loadCollection('archer', function(err, docs) {
                 if (err) return next(err);
 
                 var names = _.pluck(docs, 'name');
 
                 test.same(names.sort(), ['Sterling', 'Lana', 'Cheryl'].sort());
 
-                next();
-              });
-            }
-          ], test.done);
+                test.done();
+            });
+        });
+    },
+
+    'directory': {
+        'default': function(test) {
+            loader.load('./fixtures', function(err) {
+                if (err) return test.done(err);
+
+                async.parallel([
+                    function(next) {
+                        loadCollection('archer', function(err, docs) {
+                            if (err) return next(err);
+
+                            var names = _.pluck(docs, 'name');
+
+                            test.same(names.sort(), ['Sterling', 'Lana', 'Cheryl'].sort());
+
+                            next();
+                        });
+                    },
+                    function(next) {
+                        loadCollection('southpark', function(err, docs) {
+                            if (err) return next(err);
+
+                            var names = _.pluck(docs, 'name');
+
+                            var expected = ['Eric', 'Butters', 'Kenny', 'Stan', 'Towelie'];
+
+                            test.same(names.sort(), expected.sort());
+
+                            next();
+                        });
+                    }
+                ], test.done);
+            });
+        },
+        'ignore sub directories': function(test) {
+            loader.load('./fixtures_with_subdir', function(err) {
+                if (err) return test.done(err);
+
+                async.parallel([
+                    function(next) {
+                        loadCollection('archer', function(err, docs) {
+                            if (err) return next(err);
+
+                            var names = _.pluck(docs, 'name');
+
+                            test.same(names.sort(), ['Sterling', 'Lana', 'Cheryl'].sort());
+
+                            next();
+                        });
+                    }
+                ], test.done);
+            });
+        }
+    },
+
+    'with modifiers': function(test) {
+        var l = fixtures.connect(dbName);
+
+        l.addModifier(function(collection, doc, cb) {
+            doc.x = doc.name + 'X';
+
+            cb(null, doc);
+        });
+
+        l.addModifier(function(collection, doc, cb) {
+            doc.name += 'Y';
+
+            cb(null, doc);
+        });
+
+        l.load('./fixtures/archer.js', function(err) {
+            if (err) return test.done(err);
+
+            loadCollection('archer', function(err, docs) {
+                if (err) return test.done(err);
+
+                var x = _.pluck(docs, 'x');
+
+                test.same(x.sort(), ['SterlingX', 'LanaX', 'CherylX'].sort());
+
+                var y = _.pluck(docs, 'name');
+
+                test.same(y.sort(), ['SterlingY', 'LanaY', 'CherylY'].sort());
+
+                test.done();
+            });
         });
     }
-  },
-
-  'with modifiers' : function(test) {
-    var l = fixtures.connect(dbName);
-
-    l.addModifier(function(collection, doc, cb) {
-      doc.x = doc.name + 'X';
-
-       cb(null, doc);
-    });
-
-    l.addModifier(function(collection, doc, cb) {
-      doc.name += 'Y';
-
-      cb(null, doc);
-    });
-
-    l.load('./fixtures/archer.js', function(err) {
-  			if (err) return test.done(err);
-
-  			loadCollection('archer', function(err, docs) {
-  				if (err) return test.done(err);
-
-  				var x = _.pluck(docs, 'x');
-
-          test.same(x.sort(), ['SterlingX', 'LanaX', 'CherylX'].sort());
-
-          var y = _.pluck(docs, 'name');
-
-          test.same(y.sort(), ['SterlingY', 'LanaY', 'CherylY'].sort());
-
-  				test.done();
-  			});
-    });
-  }
 };
 
 exports['clear'] = {
     setUp: function(done) {
         db.dropDatabase(function(err) {
             if (err) return done(err);
-            
+
             loader.load('./fixtures', done);
         });
     },
@@ -376,7 +377,7 @@ exports['clear'] = {
             function(cb) {
                 loader.clear(cb);
             },
-            
+
             function(cb) {
                 loadCollection('archer', function(err, docs) {
                     if (err) return cb(err);
@@ -386,7 +387,7 @@ exports['clear'] = {
                     cb();
                 });
             },
-            
+
             function(cb) {
                 loadCollection('southpark', function(err, docs) {
                     if (err) return cb(err);
@@ -404,7 +405,7 @@ exports['clear'] = {
             function(cb) {
                 loader.clear('archer', cb);
             },
-            
+
             function(cb) {
                 loadCollection('archer', function(err, docs) {
                     if (err) return cb(err);
@@ -414,7 +415,7 @@ exports['clear'] = {
                     cb();
                 });
             },
-            
+
             function(cb) {
                 loadCollection('southpark', function(err, docs) {
                     if (err) return cb(err);
@@ -426,13 +427,13 @@ exports['clear'] = {
             }
         ], test.done);
     },
-    
+
     'clears multiple collections if called with an array': function(test) {
         async.series([
             function(cb) {
                 loader.clear(['archer', 'southpark'], cb);
             },
-            
+
             function(cb) {
                 loadCollection('archer', function(err, docs) {
                     if (err) return cb(err);
@@ -442,7 +443,7 @@ exports['clear'] = {
                     cb();
                 });
             },
-            
+
             function(cb) {
                 loadCollection('southpark', function(err, docs) {
                     if (err) return cb(err);
@@ -454,11 +455,11 @@ exports['clear'] = {
             }
         ], test.done);
     },
-    
+
     'clearing non-existent collections shouldnt error': function(test) {
         loader.clear('fheruas', function(err) {
             test.ifError(err);
-            
+
             test.done();
         })
     }
@@ -469,7 +470,7 @@ exports['clearAllAndLoad'] = {
     setUp: function(done) {
         db.dropDatabase(function(err) {
             if (err) return done(err);
-            
+
             loader.load('./fixtures', done);
         });
     },
@@ -477,14 +478,14 @@ exports['clearAllAndLoad'] = {
     'drops the db and loads data': function(test) {
         var data = {};
         data.southpark = [
-            { name: 'Kyle' }
+            {name: 'Kyle'}
         ];
-        
+
         async.series([
             function(cb) {
                 loader.clearAllAndLoad(data, cb);
             },
-            
+
             function(cb) {
                 loadCollection('archer', function(err, docs) {
                     if (err) return cb(err);
@@ -494,7 +495,7 @@ exports['clearAllAndLoad'] = {
                     cb();
                 });
             },
-            
+
             function(cb) {
                 loadCollection('southpark', function(err, docs) {
                     if (err) return cb(err);
@@ -513,22 +514,22 @@ exports['clearAndLoad'] = {
     setUp: function(done) {
         db.dropDatabase(function(err) {
             if (err) return done(err);
-            
+
             loader.load('./fixtures', done);
         });
     },
-    
+
     'drops only referenced collections; with object data': function(test) {
         var data = {};
         data.southpark = [
-            { name: 'Kyle' }
+            {name: 'Kyle'}
         ];
-        
+
         async.series([
             function(cb) {
                 loader.clearAndLoad(data, cb);
             },
-            
+
             function(cb) {
                 loadCollection('archer', function(err, docs) {
                     if (err) return cb(err);
@@ -538,7 +539,7 @@ exports['clearAndLoad'] = {
                     cb();
                 });
             },
-            
+
             function(cb) {
                 loadCollection('southpark', function(err, docs) {
                     if (err) return cb(err);
@@ -550,13 +551,13 @@ exports['clearAndLoad'] = {
             }
         ], test.done);
     },
-    
+
     'drops only referenced collections; with a file': function(test) {
         async.series([
             function(cb) {
                 loader.clearAndLoad(__dirname + '/fixtures/southpark2.js', cb);
             },
-            
+
             function(cb) {
                 loadCollection('archer', function(err, docs) {
                     if (err) return cb(err);
@@ -566,13 +567,13 @@ exports['clearAndLoad'] = {
                     cb();
                 });
             },
-            
+
             function(cb) {
                 loadCollection('southpark', function(err, docs) {
                     if (err) return cb(err);
-                    
+
                     var names = _.pluck(docs, 'name');
-                    
+
                     test.same(names, ['Stan', 'Towelie']);
 
                     cb();
@@ -586,7 +587,7 @@ exports['clearAndLoad'] = {
 
 //Close DB connection and end process when done
 exports['exit'] =  {
-  setUp: function(done) {
-    db.close(done);
-  }
-}
+    setUp: function(done) {
+        db.close(done);
+    }
+};

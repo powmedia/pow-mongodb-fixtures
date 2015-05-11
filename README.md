@@ -87,12 +87,30 @@ Usage:
     });
 
 
-load(data, callback)
+load(data, [callback])
 --------------------
 
 Adds documents to the relevant collection. If the collection doesn't exist it will be created first.
 
     var fixtures = require('pow-mongodb-fixtures').connect('mydb');
+    
+With promises:
+
+    //Objects
+    fixtures.load({
+        users: [
+            { name: 'Maeby' },
+            { name: 'George Michael' }
+        ]
+    });
+
+    //Files
+    fixtures.load(__dirname + '/fixtures/users.js');
+
+    //Directories (loads all files in the directory)
+    fixtures.load(__dirname + '/fixtures');
+
+With callbacks:
     
     //Objects
     fixtures.load({
@@ -109,13 +127,23 @@ Adds documents to the relevant collection. If the collection doesn't exist it wi
     fixtures.load(__dirname + '/fixtures', callback);
 
 
-clear(callback)
+clear([collectionNames], [callback])
 ---------------
 
 Clears existing data.
 
+With promises:
+
+    fixtures.clear();
+    
+    fixtures.clear('foo');
+    
+    fixtures.clear(['foo', 'bar']);
+
+With callbacks:
+
     fixtures.clear(function(err) {
-        //Drops the database
+        //Clears all database collections
     });
     
     fixtures.clear('foo', function(err) {
@@ -127,23 +155,45 @@ Clears existing data.
     });
     
 
-clearAllAndLoad(data, callback)
+clearAllAndLoad(data, [callback])
 ----------------------------
 
-Drops the database (clear all collections) and loads data.
+Clears all collections and loads data.
 
 
-clearAndLoad(data, callback)
+clearAndLoad(data, [callback])
 ----------------------------
 
 Clears the collections that have documents in the `data` that is passed in, and then loads data.
 
     var data = { users: [...] };
     
+With promises:
+
+    fixtures.clearAndLoad(data);
+
+With callbacks:
+
     fixtures.clearAndLoad(data, function(err) {
         //Clears only the 'users' collection then loads data
     });
     
+
+dropDatabase([callback])
+---------------
+
+Drops current database.
+
+With promises:
+
+    fixtures.dropDatabase();
+
+With callbacks:
+
+    fixtures.dropDatabase(function(err) {
+        //Drops database
+    });
+
 
 addModifier(callback)
 ----------------------------
@@ -189,6 +239,12 @@ Installation
 
 Changelog
 ---------
+
+###1.0.0
+- Rewritten library to work with promises
+- Update mongodb driver to 2.x so that it is compatible with MongoDB 3.x
+- Add dropDatabase method to really drop the database
+- Improve documentation to clarify previous clear methods
 
 ###0.10.0
 - Update mongodb driver to 1.3.x

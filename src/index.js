@@ -1,103 +1,247 @@
-//Dependencies
-var fs       = require('fs'),
-    url      = require('url'),
-    path     = require('path'),
-    mongo    = require('mongodb'),
-    ObjectID = require('bson').ObjectID,
-    async    = require('async'),
-    _        = require('underscore'),
-    basePath = path.dirname(module.parent.filename);
+'use strict';
+
+var assert = require('assert');
+var fs = require('fs');
+var path = require('path');
+var url = require('url');
+var _ = require('lodash');
+var mongo = require('mongodb');
+var Promise = require('bluebird');
+
+var ObjectID = mongo.ObjectID;
+var basePath = path.dirname(module.parent.filename);
+
+Promise.promisifyAll(fs);
+Promise.promisifyAll(mongo);
 
 
 /**
- * Helper function that creates a MongoDB ObjectID given a hex string
- * @param {String|ObjectId}  Optional hard-coded Object ID as string
+ * Get data from one file as an object
+ *
+ * @param {String} file The full path to the file to load
+ *
+ * @private
  */
-exports.createObjectId = function(id) {
-  if (!id) return new ObjectID();
-
-  //Allow cloning ObjectIDs
-  if (id.constructor.name == 'ObjectID') id = id.toString();
-
-  return new ObjectID(id);
-};
-
-
-
-/**
- * Main method for connecting to the database and returning the fixture loader (Loader)
- * 
- * @param {String} dbOrUri    Database name or connection URI
- * @param {Object} [options]  Connection options: host ('localhost'), port (27017)
- */
-exports.connect = function(db, options) {
-  return new Loader(db, options);
+function _fileToObject(file) {
+    file = path.resolve(basePath, file);
+    return require(file);
 }
 
+
+/**
+ * Get and compile data from all files in a directory, as an object
+ *
+ * @param {String} dir The directory path to load e.g. 'data/fixtures' or '../data'
+ *
+ * @private
+ */
+function _directoryToObject(dir) {
+    // Resolve relative paths if necessary.
+    dir = path.resolve(basePath, dir);
+    var collections = {};
+
+    return fs
+        .readdirAsync(dir)
+        .map(function(file) {
+            var path = dir + '/' + file;
+            return fs
+                .statAsync(path)
+                .then(function(stats) {
+                    return stats.isDirectory() ? {} : _fileToObject(path);
+                });
+        })
+        .each(function(fileObject) {
+            _.forEach(fileObject, function(docs, name) {
+                //Convert objects to array
+                if (_.isObject(docs)) {
+                    docs = _.values(docs);
+                }
+
+                //Create array for collection if it doesn't exist yet
+                if (!collections[name]) {
+                    collections[name] = [];
+                }
+
+                //Add docs to collection
+                collections[name] = collections[name].concat(docs);
+            });
+        })
+        .return(collections); // TODO: verify
+}
+
+
+/**
+ * Determine the type of fixtures being passed in (object, array, file, directory) and return
+ * an object keyed by collection name.
+ *
+ * @param {Object|String} fixtures Fixture data (object, filename or dirname)
+ * @return {Promise<Object[]>}
+ *
+ * @private
+ */
+var fixturesLoader = Promise.method(function(fixtures) {
+    if (typeof fixtures === 'object') {
+        return fixtures;
+    }
+
+    //As it's not an object, it should now be a file or directory path (string)
+    if (typeof fixtures !== 'string') {
+        throw new Error('Data must be an object, array or string (file or dir path)');
+    }
+
+    // Resolve relative paths if necessary.
+    fixtures = path.resolve(basePath, fixtures);
+
+    //Determine if fixtures is pointing to a file or directory
+    return fs
+        .statAsync(fixtures)
+        .then(function(stats) {
+            if (stats.isDirectory()) {
+                return _directoryToObject(fixtures);
+            } else {
+                return _fileToObject(fixtures);
+            }
+        });
+});
 
 
 /**
  * Loader constructor
- * 
- * @param {String} dbOrUri          Database name or connection URI
- * @param {Object} [options]        Connection options
- * @param {String} [options.host]   Default: 'localhost'
- * @param {Number} [options.port]   Default: 27017
- * @param {String} [options.user]   Username
- * @param {String} [options.pass]   Password
- * @param {Boolean} [options.safe]  Default: false
+ *
+ * @param {String} dbOrUri Database name or connection URI
+ * @param {Object} [options] Connection options
+ * @param {String} [options.host='localhost']
+ * @param {Number} [options.port=27017]
+ * @param {String} [options.user]
+ * @param {String} [options.pass]
+ * @param {Boolean} [options.safe=false]
  */
-var Loader = exports.Loader = function(dbOrUri, options) {
-  //Try parsing uri
-  var parts = url.parse(dbOrUri);
+function Loader(dbOrUri, options) {
+    //Try parsing uri
+    var parts = url.parse(dbOrUri);
 
-  //Using connection URI
-  if (parts.protocol) {
-    options = _.extend({
-      db: parts.path.replace('/', ''),
-      host: parts.hostname,
-      port: parseInt(parts.port, 10),
-      user: parts.auth ? parts.auth.split(':')[0] : null,
-      pass: parts.auth ? parts.auth.split(':')[1] : null,
-      safe: true
-    }, options);
-  }
+    //Using connection URI
+    if (parts.protocol) {
+        options = _.extend({
+            db: parts.path.replace('/', ''),
+            host: parts.hostname,
+            port: parseInt(parts.port, 10),
+            user: parts.auth ? parts.auth.split(':')[0] : null,
+            pass: parts.auth ? parts.auth.split(':')[1] : null,
+            safe: true
+        }, options);
+    }
 
-  //Using DB name
-  else {
-    options = _.extend({
-      db: dbOrUri,
-      host: 'localhost',
-      port: 27017,
-      user: null,
-      pass: null,
-      safe: true
-    }, options);
-  }
-  
-  this.options = options;
-  this.modifiers = [];
+    //Using DB name
+    else {
+        options = _.extend({
+            db: dbOrUri,
+            host: 'localhost',
+            port: 27017,
+            user: null,
+            pass: null,
+            safe: true
+        }, options);
+    }
+
+    this.options = options;
+    this.modifiers = [];
+}
+
+
+/**
+ * Connects to the database and returns the client.
+ * If a connection has already been established it is used.
+ *
+ * @returns {Promise<Object>} Promise of database
+ *
+ * @private
+ */
+Loader.prototype._connect = function() {
+    if (this.client) {
+        return this.client;
+    }
+
+    var options = this.options;
+    var db = new mongo.Db(
+        options.db,
+        new mongo.Server(options.host, options.port, {}),
+        {safe: options.safe}
+    );
+
+    this.client = db.openAsync()
+        .then(function(db) {
+            if (!options.user) {
+                return db;
+            }
+
+            return db.authenticateAsync(options.user, options.pass).return(db);
+        });
+
+    return this.client;
+};
+
+
+/**
+ * Inserts the given data (object or array) as new documents
+ *
+ * @param {Object} data
+ * @return {Promise<null>}
+ *
+ * @private
+ */
+Loader.prototype._loadData = function(data) {
+    var self = this;
+
+    var collectionNames = _.keys(data);
+    var connection = this._connect();
+
+    return Promise.each(collectionNames, function(collectionName) {
+        var collection = connection.call('collectionAsync', collectionName);
+        var collectionData = data[collectionName];
+
+        var items;
+        if (Array.isArray(collectionData)) {
+            // TODO: is this necessary?
+            items = collectionData.slice();
+        } else {
+            items = _.values(collectionData);
+        }
+
+        var modifiedItems = Promise.map(items, function(item) {
+            return Promise.each(self.modifiers, function(modifier) {
+                return modifier
+                    .call(modifier, collectionName, item)
+                    .then(function(modifiedItem) {
+                        item = modifiedItem;
+                    });
+            }).then(function() {
+                return item;
+            });
+        });
+
+        return modifiedItems
+            .then(function(items) {
+                return collection.call('insertAsync', items, {safe: true});
+            });
+    });
 };
 
 
 /**
  * Inserts data
  *
- * @param {Mixed}       The data to load. This parameter accepts either:
- *                          String: Path to a file or directory to load
- *                          Object: Object literal in the form described in docs
- * @param {Function}    Callback(err)
+ * @param {String|Object} fixtures The data to load. This parameter accepts either:
+ *      String: Path to a file or directory to load
+ *      Object: Object literal in the form described in docs
+ * @param {Function} [callback] Optional callback.
+ * @return {Promise<null>}
  */
-Loader.prototype.load = function(fixtures, cb) {
-  var self = this;
-  
-  _mixedToObject(fixtures, function(err, data) {
-    if (err) return cb(err);
-    
-    _loadData(self, data, cb);
-  });
+Loader.prototype.load = function(fixtures, callback) {
+    return fixturesLoader(fixtures)
+        .then(this._loadData.bind(this))
+        .nodeify(callback);
 };
-
 
 
 /**
@@ -107,402 +251,152 @@ Loader.prototype.load = function(fixtures, cb) {
  * The result from each modifier is fed into the next modifier as its input, and so on until the final result which is
  * then inserted into the db.
  *
- * @param {Function} cb        The modifier callback function with signature (collectionName, document, callback).
+ * @param {Function} modifier The modifier function with signature (collectionName, document, callback).
+ * @param {Boolean} [returnsPromise=false] If true, the function will not be promisified and signature
+ * becomes (collectionName, document).
  */
-Loader.prototype.addModifier = function(cb) {
-  this.modifiers.push(cb);
+Loader.prototype.addModifier = function(modifier, returnsPromise) {
+    modifier = !!returnsPromise ? modifier : Promise.promisify(modifier);
+    this.modifiers.push(modifier);
 };
 
 
+/**
+ * loader.dropDatabase(cb) : Really drops the database
+ *
+ * @param {Function} [callback] Optional callback.
+ * @return {Promise<null>}
+ */
+Loader.prototype.dropDatabase = function(callback) {
+    return this
+        ._connect()
+        .call('dropDatabaseAsync')
+        .return(null)
+        .nodeify(callback);
+};
+
 
 /**
- * loader.clear(cb) : Clears (drops) the entire database
+ * loader.clear(cb) : Clears all database collections
  *
  * loader.clear(collectionNames, cb) : Clears only the given collection(s)
  *
- * @param {String|Array}    Optional. Name of collection to clear or an array of collection names
- * @param {Function}        Callback(err)
+ * @param {String|Array} [collectionNames] Optional name or an array of collection names to clear
+ * @param {Function} [callback] Optional callback.
+ * @return {Promise<null>}
  */
-Loader.prototype.clear = function(collectionNames, cb) {
-  //Normalise arguments
-  if (arguments.length == 1) { //cb
-    cb = collectionNames;
-    collectionNames = null;
-  }
-  
-  var self = this;
-
-  var results = {};
-
-  async.series([
-    function connect(cb) {
-      _connect(self, function(err, db) {
-        if (err) return cb(err);
-
-        results.db = db;
-        cb();
-      })
-    },
-
-    function getCollectionNames(cb) {
-      //If collectionNames not passed we clear all of them
-      if (!collectionNames) {
-        results.db.collectionNames(function(err, names) {
-          if (err) return cb(err);
-
-          //Get the real collection names
-          names = _.map(names, function(nameObj) {
-            var fullName = nameObj.name,
-                parts = fullName.split('.');
-
-            //Remove DB name
-            parts.shift();
-
-            //Skip system collections
-            if (parts[0] == 'system' || parts[0] == 'local') return;
-
-            return parts.join('.');
-          });
-
-          results.collectionNames = _.compact(names);
-
-          cb();
-        })
-      } else {
-        //Convert single collection as string to array
-        if (!_.isArray(collectionNames)) collectionNames = [collectionNames];
-
-        results.collectionNames = collectionNames;
-
-        cb();
-      }
-    },
-
-    function clearCollections() {
-      async.forEach(results.collectionNames, function(name, cb) {
-        results.db.collection(name, function(err, collection) {
-          if (err) return cb(err);
-
-          collection.remove({}, {safe: true}, cb);
-        });
-      }, cb);
+Loader.prototype.clear = function(collectionNames, callback) {
+    if (typeof collectionNames === 'function') {
+        callback = collectionNames;
+        collectionNames = null;
     }
-  ], cb)
+
+    var getCollections = function(db) {
+        if (typeof collectionNames === 'string') {
+            collectionNames = [collectionNames];
+        }
+
+        assert(collectionNames == null || Array.isArray(collectionNames));
+
+        return db
+            .collectionsAsync()
+            .filter(function(collection) {
+                var collectionName = collection.s.name;
+                var notSystemCollection = !_.startsWith(collectionName, 'system.');
+                var inFilteredCollections = collectionNames == null ?
+                    true : _.includes(collectionNames, collectionName);
+                return notSystemCollection && inFilteredCollections;
+            });
+    };
+
+    return this._connect()
+        .then(getCollections)
+        .each(function(collection) {
+            return collection.removeAsync({}, {safe: true});
+        })
+        .return(null)
+        .nodeify(callback);
 };
 
 
 /**
- * Drops the database and inserts data
+ * Clears all collections and loads fixtures
  *
- * @param {Mixed}           The data to load. This parameter accepts either:
- *                              String: Path to a file or directory to load
- *                              Object: Object literal in the form described in docs
- * @param {Function}        Callback(err)
+ * @param {String|Object} fixtures The data to load. This parameter accepts either:
+ *      String: Path to a file or directory to load
+ *      Object: Object literal in the form described in docs
+ * @param {Function} [callback] Optional callback.
+ * @return {Promise<null>}
  */
-Loader.prototype.clearAllAndLoad = function(fixtures, cb) {
-  var self = this;
-  
-  self.clear(function(err) {
-    if (err) return cb(err);
-
-    self.load(fixtures, function(err) {
-      cb(err);
-    });
-	});
+Loader.prototype.clearAllAndLoad = function(fixtures, callback) {
+    return this.clear()
+        .then(this.load.bind(this, fixtures))
+        .nodeify(callback);
 };
 
 
 /**
  * Clears only the collections that have documents to be inserted, then inserts data
  *
- * @param {Mixed}           The data to load. This parameter accepts either:
- *                              String: Path to a file or directory to load
- *                              Object: Object literal in the form described in docs
- * @param {Function}        Callback(err)
+ * @param {String|Object} fixtures The data to load. This parameter accepts either:
+ *      String: Path to a file or directory to load
+ *      Object: Object literal in the form described in docs
+ * @param {Function} [callback] Optional callback.
+ * @return {Promise<null>}
  */
-Loader.prototype.clearAndLoad = function(fixtures, cb) {
-  var self = this;
-  
-  _mixedToObject(fixtures, function(err, objData) {
-    if (err) return cb(err);
-    
-    var collections = Object.keys(objData);
-      
-    self.clear(collections, function(err) {
-      if (err) return cb(err);
-
-      _loadData(self, objData, cb);
-  	});
-  });
+Loader.prototype.clearAndLoad = function(fixtures, callback) {
+    return fixturesLoader(fixtures)
+        .bind(this)
+        .tap(function(data) {
+            var collections = _.keys(data);
+            //noinspection JSPotentiallyInvalidUsageOfThis
+            return this.clear(collections);
+        })
+        .then(this._loadData.bind(this))
+        .nodeify(callback);
 };
+
 
 /**
  * Close the connection to the DB
  *
- * @param {Function} Callback(err)
+ * @param {Function} [callback] Optional callback.
  */
-Loader.prototype.close = function(cb) {
-  var self = this;
-
-  _close(self, function (err) {
-    if (err) return cb(err);
-    cb();
-  });
-};
-
-
-//PRIVATE METHODS
-
-var noop = function() {};
-
-/**
- * Connects to the database and returns the client. If a connection has already been established it is used.
- *
- * @param {Loader}       The configured loader
- * @param {Function}     Callback(err, client)
- */
-var _connect = function(loader, cb) {
-  if (loader.client) return cb(null, loader.client);
-
-  var options = loader.options;
-
-  var db = new mongo.Db(options.db, new mongo.Server(options.host, options.port, {}), {safe: options.safe});
-  
-  db.open(function(err, db) {
-    if (err) return cb(err);
-
-    loader.client = db;
-
-    //Authenticate if required
-    if (!options.user) return cb(null, db);
-
-    db.authenticate(options.user, options.pass, function(err, result) {
-      if (err) return cb(err);
-      
-      cb(null, db);
-    });
-  });
-};
-
-/**
- * Close the connection to the database, if it exists
- *
- * @param {Function} Callback(err)
- */
-
-var _close = function(loader, cb) {
-  var db = loader.client;
-  if (db) {
-    db.close(function (err, results) {
-      if (err) return cb(err);
-      cb(null);
-    });
-  } else {
-    cb(new Error("No connection found!"));
-  }
-};
-
-/**
- * Inserts the given data (object or array) as new documents
- *
- * @param {Loader}       The configured loader
- * @param {Object|Array} The data to load
- * @param {Function}     Callback(err)
- * @api private
- */
-var _loadData = function(loader, data, cb) {	
-	cb = cb || noop;
-	
-	var collectionNames = Object.keys(data);
-	
-	_connect(loader, function(err, db) {
-		if (err) return cb(err);
-		
-		async.forEach(collectionNames, function(collectionName, cbForEachCollection) {
-			var collectionData = data[collectionName];
-
-      //Convert object to array
-      var items;
-      if (Array.isArray(collectionData)) {
-        items = collectionData.slice();
-      } else {
-        items = _.values(collectionData);
-      }
-
-      var modifiedItems = [];
-
-      async.forEach(items, function(item, cbForEachItem) {
-        // apply modifiers
-        async.forEach(loader.modifiers, function(modifier, cbForEachModifier) {
-          modifier.call(modifier, collectionName, item, function(err, modifiedDoc) {
-            if (err) return cbForEachModifier(err);
-
-            item = modifiedDoc;
-
-            cbForEachModifier();
-          });
-        }, function(err) {
-          if (err) return cbForEachItem(err);
-
-          modifiedItems.push(item);
-
-          cbForEachItem();
-        });
-      }, function(err) {
-        if (err) return cbForEachCollection(err);
-
-        db.collection(collectionName, function(err, collection) {
-          if (err) return cbForEachCollection(err);
-
-          collection.insert(modifiedItems, { safe: true }, cbForEachCollection);
-        });
-      });
-		}, cb);
-	});
-};
-
-
-/**
- * Determine the type of fixtures being passed in (object, array, file, directory) and return
- * an object keyed by collection name.
- *
- * @param {Object|String}       Fixture data (object, filename or dirname)
- * @param {Function}            Optional callback(err, data)
- * @api private
- */
-var _mixedToObject = function(fixtures, cb) {
-  if (typeof fixtures == 'object') return cb(null, fixtures);
-
-  //As it's not an object, it should now be a file or directory path (string)
-  if (typeof fixtures != 'string') {
-    return cb(new Error('Data must be an object, array or string (file or dir path)'));
-  }
-
-  // Resolve relative paths if necessary.
-  fixtures = path.resolve(basePath, fixtures);
-
-  //Determine if fixtures is pointing to a file or directory
-  fs.stat(fixtures, function(err, stats) {
-    if (err) return cb(err);
-
-    if (stats.isDirectory()) {
-      _dirToObject(fixtures, cb);
-    } else { //File
-      _fileToObject(fixtures, cb);
+Loader.prototype.close = function(callback) {
+    if (!this.client) {
+        throw new Error('No connection found!');
     }
-  });
-}
 
-
-/**
- * Get data from one file as an object
- * 
- * @param {String}      The full path to the file to load
- * @param {Function}    Optional callback(err, data)
- * @api private
- */
-var _fileToObject = function(file, cb) { 
-  cb = cb || noop;
-  
-  // Resolve relative paths if necessary.
-  file = path.resolve(basePath, file);
-
-  var data = require(file);
-  
-  cb(null, data);
-}
-
-
-/**
- * Get and compile data from all files in a directory, as an object
- * 
- * @param {String}      The directory path to load e.g. 'data/fixtures' or '../data'
- * @param {Function}    Optional callback(err)
- * @api private
- */
-var _dirToObject = function(dir, cb) {
-  cb = cb || noop;
-  
-  // Resolve relative paths if necessary.
-  dir = path.resolve(basePath, dir);
-  
-  async.waterfall([
-    function readDir(cb) {
-      fs.readdir(dir, cb)
-    },
-    
-    function filesToObjects(files, cb) {
-      async.map(files, function processFile(file, cb) {
-        var path = dir + '/' + file;
-
-        // Determine if it's a file or directory
-        fs.stat(path, function(err, stats) {
-          if (err) return cb(err);
-
-          if (stats.isDirectory()) {
-            cb(null, {});
-          } else { //File
-            _fileToObject(path, cb);
-          }
-        });
-      }, cb);
-    },
-    
-    function combineObjects(results, cb) {      
-      //Where all combined data will be kept, keyed by collection name
-      var collections = {};
-      
-      results.forEach(function(fileObj) {
-        _.each(fileObj, function(docs, name) {
-          //Convert objects to array
-          if (_.isObject(docs)) {
-            docs = _.values(docs);
-          }
-          
-          //Create array for collection if it doesn't exist yet
-          if (!collections[name]) collections[name] = [];
-          
-          //Add docs to collection
-          collections[name] = collections[name].concat(docs);
-        });
-      });
-      
-      cb(null, collections)
-    }
-  ], function(err, combinedData) {
-    if (err) return cb(err);
-    
-    cb(null, combinedData);
-  });
+    return this.client.call('closeAsync').nodeify(callback);
 };
 
 
 /**
- * Builds the full connection URI
+ * Main method for connecting to the database and returning the fixture loader (Loader)
  *
- * @param {Object} options
- * 
- * @return {String}
+ * @param {String} dbOrUri Database name or connection URI
+ * @param {Object} [options] Connection options
+ * @param {String} [options.host='localhost']
+ * @param {Number} [options.port=27017]
+ * @param {String} [options.user]
+ * @param {String} [options.pass]
+ * @param {Boolean} [options.safe=false]
  */
-var _buildConnectionUri = function(options) {
-  var parts = ['mongodb://'];
+module.exports.connect = function(dbOrUri, options) {
+    return new Loader(dbOrUri, options);
+};
 
-  if (options.user) parts.push(options.user);
 
-  if (options.pass) {
-    parts.push(':');
-    parts.push(options.pass);
-  }
-
-  if (options.user) {
-    parts.push('@');
-  }
-
-  parts.push(options.host);
-  parts.push(':');
-  parts.push(options.port);
-  parts.push('/');
-  parts.push(options.db);
-
-  return parts.join('');
-}
+/**
+ * Helper function that creates a MongoDB ObjectID given a HEX string
+ * @param {String|ObjectID} [id] Optional hard-coded Object ID as string
+ */
+exports.createObjectId = function(id) {
+    if (id instanceof ObjectID) {
+        return id;
+    } else if (typeof id === 'string' || id == null) {
+        return new ObjectID(id);
+    } else {
+        throw new TypeError('Optional ID must be a string or an instance of ObjectID');
+    }
+};
