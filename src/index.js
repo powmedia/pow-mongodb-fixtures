@@ -147,25 +147,22 @@ Loader.prototype.clear = function(collectionNames, cb) {
     function getCollectionNames(cb) {
       //If collectionNames not passed we clear all of them
       if (!collectionNames) {
-        results.db.collectionNames(function(err, names) {
+        results.db.collections(function(err, items) {
           if (err) return cb(err);
 
           //Get the real collection names
-          names = _.map(names, function(nameObj) {
-            var fullName = nameObj.name,
-                parts = fullName.split('.');
-
-            //Remove DB name
-            parts.shift();
-
-            //Skip system collections
-            if (parts[0] == 'system' || parts[0] == 'local') return;
-
-            return parts.join('.');
+          var names = _.map(items, function(item) {
+              var name = item.s.name;
+              if (name.indexOf('system.') === 0
+                    || name.indexOf('local.') === 0) {
+                  //Skip system collections
+                  return;
+              } else {
+                  return name;
+              }
           });
 
           results.collectionNames = _.compact(names);
-
           cb();
         })
       } else {
