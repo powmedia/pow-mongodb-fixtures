@@ -12,54 +12,61 @@ containing the data for documents within that.
 FOR EXAMPLE:
 With the file below, 3 documents will be inserted into the 'users' collection and 2 into the 'businesses' collection:
 
-    //fixtures.js
-    exports.users = [
-        { name: 'Gob' },
-        { name: 'Buster' },
-        { name: 'Steve Holt' }
-    ];
+```js
+//fixtures.js
+exports.users = [
+    { name: 'Gob' },
+    { name: 'Buster' },
+    { name: 'Steve Holt' }
+];
 
-    exports.businesses = [
-        { name: 'The Banana Stand' },
-        { name: 'Bluth Homes' }
-    ];
-
+exports.businesses = [
+    { name: 'The Banana Stand' },
+    { name: 'Bluth Homes' }
+];
+```
 
 You can also load fixtures as an object where each document is keyed, in case you want to reference another document. This example uses the included `createObjectId` helper:
 
-    //users.js
-    var id = require('pow-mongodb-fixtures').createObjectId;
+```js
+//users.js
+var id = require('pow-mongodb-fixtures').createObjectId;
 
-    var users = exports.users = {
-        user1: {
-            _id: id(),
-            name: 'Michael'
-        },
-        user2: {
-            _id: id(),
-            name: 'George Michael',
-            father: users.user1._id
-        },
-        user3: {
-            _id: id('4ed2b809d7446b9a0e000014'),
-            name: 'Tobias'
-        }
+var users = exports.users = {
+	user1: {
+        _id: id(),
+        name: 'Michael'
+    },
+    user2: {
+        _id: id(),
+        name: 'George Michael',
+        father: users.user1._id
+    },
+    user3: {
+        _id: id('4ed2b809d7446b9a0e000014'),
+        name: 'Tobias'
     }
-
+}
+```
 
 CLI usage
 =========
 
 A CLI program is included for quickly loading fixture files. To use it install the module globally:
 
-    npm install pow-mongodb-fixtures -g
+```sh
+npm install pow-mongodb-fixtures -g
+```
 
 Then use the program to install a file or directory:
 
-    mongofixtures <dbname> <fixture file>
+```sh
+mongofixtures <dbname> <fixture file>
+```
 
-    mongofixtures appdb fixtures/users.js
-
+```sh
+mongofixtures appdb fixtures/users.js
+```
 
 API
 ===
@@ -79,53 +86,56 @@ Options:
 
 Usage:
 
-    var fixtures = require('pow-mongodb-fixtures').connect('dbname');
-    
-    var fixtures2 = require('pow-mongodb-fixtures').connect('dbname', {
-      host: 'http://dbhost.com/',
-      port: 1234
-    });
+```js
+var fixtures = require('pow-mongodb-fixtures').connect('dbname');
 
+var fixtures2 = require('pow-mongodb-fixtures').connect('dbname', {
+  	host: 'http://dbhost.com/',
+  	port: 1234
+});
+```
 
 load(data, callback)
 --------------------
 
 Adds documents to the relevant collection. If the collection doesn't exist it will be created first.
 
-    var fixtures = require('pow-mongodb-fixtures').connect('mydb');
-    
-    //Objects
-    fixtures.load({
-        users: [
-            { name: 'Maeby' },
-            { name: 'George Michael' }
-        ]
-    }, callback);
+```js
+var fixtures = require('pow-mongodb-fixtures').connect('mydb');
 
-    //Files
-    fixtures.load(__dirname + '/fixtures/users.js', cb);
+//Objects
+fixtures.load({
+    users: [
+        { name: 'Maeby' },
+        { name: 'George Michael' }
+    ]
+}, callback);
 
-    //Directories (loads all files in the directory)
-    fixtures.load(__dirname + '/fixtures', callback);
+//Files
+fixtures.load(__dirname + '/fixtures/users.js', cb);
 
+//Directories (loads all files in the directory)
+fixtures.load(__dirname + '/fixtures', callback);
+```
 
 clear(callback)
 ---------------
 
 Clears existing data.
 
-    fixtures.clear(function(err) {
-        //Drops the database
-    });
-    
-    fixtures.clear('foo', function(err) {
-        //Clears the 'foo' collection
-    });
-    
-    fixtures.clear(['foo', 'bar'], function(err) {
-        //Clears the 'foo' and 'bar' collections
-    });
-    
+```js
+fixtures.clear(function(err) {
+    //Drops the database
+});
+
+fixtures.clear('foo', function(err) {
+    //Clears the 'foo' collection
+});
+
+fixtures.clear(['foo', 'bar'], function(err) {
+    //Clears the 'foo' and 'bar' collections
+});
+```
 
 clearAllAndLoad(data, callback)
 ----------------------------
@@ -138,20 +148,23 @@ clearAndLoad(data, callback)
 
 Clears the collections that have documents in the `data` that is passed in, and then loads data.
 
-    var data = { users: [...] };
-    
-    fixtures.clearAndLoad(data, function(err) {
-        //Clears only the 'users' collection then loads data
-    });
-    
+```js
+var data = { users: [...] };
+
+fixtures.clearAndLoad(data, function(err) {
+    //Clears only the 'users' collection then loads data
+});
+```
 
 addModifier(callback)
-----------------------------
+---------------------
 
 Adds a modifier (function) which gets called for each document that is to be inserted. The signature of this function
 should be:
 
+```js
     (collectionName, document, callback)
+```
 
 * collectionName - name of collection
 * document - the document which is to be inserted
@@ -159,33 +172,34 @@ should be:
 
 Modifiers are chained in the order in which they're added. For example:
 
+```js
+var data = { users: [...] };
 
-    var data = { users: [...] };
+// this modifier will get called first
+fixtures.addModifier(function(collectionName, doc, cb) {
+  doc.createdAt = new Date();
 
-    // this modifier will get called first
-    fixtures.addModifier(function(collectionName, doc, cb) {
-      doc.createdAt = new Date();
+  cb(null, doc);
+});
 
-      cb(null, doc);
-    });
+// this modifier will get called second with the result from the first modifier call
+fixtures.addModifier(function(collectionName, doc, cb) {
+  doc.updatedAt = new Date();
 
-    // this modifier will get called second with the result from the first modifier call
-    fixtures.addModifier(function(collectionName, doc, cb) {
-      doc.updatedAt = new Date();
+  cb(null, doc);
+});
 
-      cb(null, doc);
-    });
-
-    fixtures.load(data, function(err) {
-        // each loaded data item will have the createdAt and updatedAt keys set.
-    });
-
+fixtures.load(data, function(err) {
+    // each loaded data item will have the createdAt and updatedAt keys set.
+});
+```
 
 Installation
 ------------
 
+```sh
 	npm install pow-mongodb-fixtures
-
+```
 
 Changelog
 ---------
