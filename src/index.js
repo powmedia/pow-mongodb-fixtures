@@ -346,7 +346,7 @@ var _loadData = function(loader, data, cb) {
         db.collection(collectionName, function(err, collection) {
           if (err) return cbForEachCollection(err);
 
-          collection.insert(modifiedItems, { safe: true }, cbForEachCollection);
+          collection.insertMany(modifiedItems, { safe: true }, cbForEachCollection);
         });
       });
 		}, cb);
