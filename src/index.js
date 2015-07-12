@@ -145,47 +145,39 @@ Loader.prototype.clear = function(collectionNames, cb) {
     },
 
     function getCollectionNames(cb) {
-      //If collectionNames not passed we clear all of them
+      //If collectionNames not passed, drop the database
       if (!collectionNames) {
-        results.db.collectionNames(function(err, names) {
-          if (err) return cb(err);
-
-          //Get the real collection names
-          names = _.map(names, function(nameObj) {
-            var fullName = nameObj.name,
-                parts = fullName.split('.');
-
-            //Remove DB name
-            parts.shift();
-
-            //Skip system collections
-            if (parts[0] == 'system' || parts[0] == 'local') return;
-
-            return parts.join('.');
-          });
-
-          results.collectionNames = _.compact(names);
-
-          cb();
-        })
+        results.db.dropDatabase(cb);
       } else {
         //Convert single collection as string to array
         if (!_.isArray(collectionNames)) collectionNames = [collectionNames];
 
-        results.collectionNames = collectionNames;
+        async.map(collectionNames, function (collectionName, cbForEachCollection) {
+          results.db.listCollections({ name: collectionName }).toArray(cbForEachCollection);
+        }, function (err, result) {
+          if (err) { return cb(err); }
 
-        cb();
+          result = _.flatten(result);
+
+          if (_.isEmpty(result)) {
+            results.collectionNames = null;
+            return cb();
+          }
+
+          results.collectionNames = collectionNames;
+          cb();
+        });
       }
     },
 
     function clearCollections() {
-      async.forEach(results.collectionNames, function(name, cb) {
-        results.db.collection(name, function(err, collection) {
-          if (err) return cb(err);
+      if (results.collectionNames) {
+        async.forEach(results.collectionNames, function(name, cb) {
+          var collection = results.db.collection(name);
 
-          collection.remove({}, {safe: true}, cb);
-        });
-      }, cb);
+          collection.drop(cb);
+        }, cb);
+      } else { cb(); }
     }
   ], cb)
 };
