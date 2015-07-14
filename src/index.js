@@ -3,7 +3,7 @@ var fs       = require('fs'),
     url      = require('url'),
     path     = require('path'),
     mongo    = require('mongodb'),
-    ObjectID = require('bson').ObjectID,
+    ObjectID = mongo.ObjectId,
     async    = require('async'),
     _        = require('underscore'),
     basePath = path.dirname(module.parent.filename);
@@ -26,7 +26,7 @@ exports.createObjectId = function(id) {
 
 /**
  * Main method for connecting to the database and returning the fixture loader (Loader)
- * 
+ *
  * @param {String} dbOrUri    Database name or connection URI
  * @param {Object} [options]  Connection options: host ('localhost'), port (27017)
  */
@@ -38,7 +38,7 @@ exports.connect = function(db, options) {
 
 /**
  * Loader constructor
- * 
+ *
  * @param {String} dbOrUri          Database name or connection URI
  * @param {Object} [options]        Connection options
  * @param {String} [options.host]   Default: 'localhost'
@@ -90,10 +90,10 @@ var Loader = exports.Loader = function(dbOrUri, options) {
  */
 Loader.prototype.load = function(fixtures, cb) {
   var self = this;
-  
+
   _mixedToObject(fixtures, function(err, data) {
     if (err) return cb(err);
-    
+
     _loadData(self, data, cb);
   });
 };
@@ -129,7 +129,7 @@ Loader.prototype.clear = function(collectionNames, cb) {
     cb = collectionNames;
     collectionNames = null;
   }
-  
+
   var self = this;
 
   var results = {};
@@ -147,16 +147,13 @@ Loader.prototype.clear = function(collectionNames, cb) {
     function getCollectionNames(cb) {
       //If collectionNames not passed we clear all of them
       if (!collectionNames) {
-        results.db.collectionNames(function(err, names) {
+        results.db.listCollections().toArray(function(err, names) {
           if (err) return cb(err);
 
           //Get the real collection names
           names = _.map(names, function(nameObj) {
             var fullName = nameObj.name,
                 parts = fullName.split('.');
-
-            //Remove DB name
-            parts.shift();
 
             //Skip system collections
             if (parts[0] == 'system' || parts[0] == 'local') return;
@@ -201,7 +198,7 @@ Loader.prototype.clear = function(collectionNames, cb) {
  */
 Loader.prototype.clearAllAndLoad = function(fixtures, cb) {
   var self = this;
-  
+
   self.clear(function(err) {
     if (err) return cb(err);
 
@@ -222,12 +219,12 @@ Loader.prototype.clearAllAndLoad = function(fixtures, cb) {
  */
 Loader.prototype.clearAndLoad = function(fixtures, cb) {
   var self = this;
-  
+
   _mixedToObject(fixtures, function(err, objData) {
     if (err) return cb(err);
-    
+
     var collections = Object.keys(objData);
-      
+
     self.clear(collections, function(err) {
       if (err) return cb(err);
 
@@ -267,7 +264,7 @@ var _connect = function(loader, cb) {
   var options = loader.options;
 
   var db = new mongo.Db(options.db, new mongo.Server(options.host, options.port, {}), {safe: options.safe});
-  
+
   db.open(function(err, db) {
     if (err) return cb(err);
 
@@ -278,7 +275,7 @@ var _connect = function(loader, cb) {
 
     db.authenticate(options.user, options.pass, function(err, result) {
       if (err) return cb(err);
-      
+
       cb(null, db);
     });
   });
@@ -310,14 +307,14 @@ var _close = function(loader, cb) {
  * @param {Function}     Callback(err)
  * @api private
  */
-var _loadData = function(loader, data, cb) {	
+var _loadData = function(loader, data, cb) {
 	cb = cb || noop;
-	
+
 	var collectionNames = Object.keys(data);
-	
+
 	_connect(loader, function(err, db) {
 		if (err) return cb(err);
-		
+
 		async.forEach(collectionNames, function(collectionName, cbForEachCollection) {
 			var collectionData = data[collectionName];
 
@@ -396,41 +393,41 @@ var _mixedToObject = function(fixtures, cb) {
 
 /**
  * Get data from one file as an object
- * 
+ *
  * @param {String}      The full path to the file to load
  * @param {Function}    Optional callback(err, data)
  * @api private
  */
-var _fileToObject = function(file, cb) { 
+var _fileToObject = function(file, cb) {
   cb = cb || noop;
-  
+
   // Resolve relative paths if necessary.
   file = path.resolve(basePath, file);
 
   var data = require(file);
-  
+
   cb(null, data);
 }
 
 
 /**
  * Get and compile data from all files in a directory, as an object
- * 
+ *
  * @param {String}      The directory path to load e.g. 'data/fixtures' or '../data'
  * @param {Function}    Optional callback(err)
  * @api private
  */
 var _dirToObject = function(dir, cb) {
   cb = cb || noop;
-  
+
   // Resolve relative paths if necessary.
   dir = path.resolve(basePath, dir);
-  
+
   async.waterfall([
     function readDir(cb) {
       fs.readdir(dir, cb)
     },
-    
+
     function filesToObjects(files, cb) {
       async.map(files, function processFile(file, cb) {
         var path = dir + '/' + file;
@@ -447,31 +444,31 @@ var _dirToObject = function(dir, cb) {
         });
       }, cb);
     },
-    
-    function combineObjects(results, cb) {      
+
+    function combineObjects(results, cb) {
       //Where all combined data will be kept, keyed by collection name
       var collections = {};
-      
+
       results.forEach(function(fileObj) {
         _.each(fileObj, function(docs, name) {
           //Convert objects to array
           if (_.isObject(docs)) {
             docs = _.values(docs);
           }
-          
+
           //Create array for collection if it doesn't exist yet
           if (!collections[name]) collections[name] = [];
-          
+
           //Add docs to collection
           collections[name] = collections[name].concat(docs);
         });
       });
-      
+
       cb(null, collections)
     }
   ], function(err, combinedData) {
     if (err) return cb(err);
-    
+
     cb(null, combinedData);
   });
 };
@@ -481,7 +478,7 @@ var _dirToObject = function(dir, cb) {
  * Builds the full connection URI
  *
  * @param {Object} options
- * 
+ *
  * @return {String}
  */
 var _buildConnectionUri = function(options) {
