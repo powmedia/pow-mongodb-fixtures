@@ -1,4 +1,4 @@
-https://travis-ci.org/powmedia/pow-mongodb-fixtures.svg?branch=master
+[![Build Status](https://travis-ci.org/powmedia/pow-mongodb-fixtures.svg?branch=master)](https://travis-ci.org/powmedia/pow-mongodb-fixtures)
 
 pow-mongodb-fixtures
 =================
