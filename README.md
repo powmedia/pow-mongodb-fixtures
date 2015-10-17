@@ -1,3 +1,5 @@
+https://travis-ci.org/powmedia/pow-mongodb-fixtures.svg?branch=master
+
 pow-mongodb-fixtures
 =================
 
