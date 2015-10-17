@@ -116,7 +116,7 @@ Loader.prototype.addModifier = function(cb) {
 
 
 /**
- * loader.clear(cb) : Clears (drops) the entire database
+ * loader.clear(cb) : Clears all collections
  *
  * loader.clear(collectionNames, cb) : Clears only the given collection(s)
  *
@@ -145,7 +145,7 @@ Loader.prototype.clear = function(collectionNames, cb) {
     },
 
     function getCollectionNames(cb) {
-      //If collectionNames not passed we clear all of them
+      //If collectionNames not passed, clear all of them
       if (!collectionNames) {
         results.db.listCollections().toArray(function(err, names) {
           if (err) return cb(err);
@@ -169,27 +169,39 @@ Loader.prototype.clear = function(collectionNames, cb) {
         //Convert single collection as string to array
         if (!_.isArray(collectionNames)) collectionNames = [collectionNames];
 
-        results.collectionNames = collectionNames;
+        async.map(collectionNames, function (collectionName, cbForEachCollection) {
+          results.db.listCollections({ name: collectionName }).toArray(cbForEachCollection);
+        }, function (err, result) {
+          if (err) { return cb(err); }
 
-        cb();
+          result = _.flatten(result);
+
+          if (_.isEmpty(result)) {
+            results.collectionNames = null;
+            return cb();
+          }
+
+          results.collectionNames = collectionNames;
+          cb();
+        });
       }
     },
 
     function clearCollections() {
-      async.forEach(results.collectionNames, function(name, cb) {
-        results.db.collection(name, function(err, collection) {
-          if (err) return cb(err);
+      if (results.collectionNames) {
+        async.forEach(results.collectionNames, function(name, cb) {
+          var collection = results.db.collection(name);
 
-          collection.remove({}, {safe: true}, cb);
-        });
-      }, cb);
+          collection.drop(cb);
+        }, cb);
+      } else { cb(); }
     }
   ], cb)
 };
 
 
 /**
- * Drops the database and inserts data
+ * Clears all collections and inserts data
  *
  * @param {Mixed}           The data to load. This parameter accepts either:
  *                              String: Path to a file or directory to load
@@ -351,7 +363,7 @@ var _loadData = function(loader, data, cb) {
         db.collection(collectionName, function(err, collection) {
           if (err) return cbForEachCollection(err);
 
-          collection.insert(modifiedItems, { safe: true }, cbForEachCollection);
+          collection.insertMany(modifiedItems, { safe: true }, cbForEachCollection);
         });
       });
 		}, cb);
