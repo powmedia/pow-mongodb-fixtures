@@ -190,11 +190,10 @@ Installation
 Changelog
 ---------
 
-###0.12.0  
+###0.13.0  
 - Update mongodb driver to 2.0.x  
 - Updated `collection.insert` with `collection.insertMany` - the former is marked for deprecation in version 3.x  
-- Move to Lo-Dash from Underscore  
-- Refactor `clear` to be the point - drop the db if no collection name passed in, otherwise drop specified collection    
+- Move to Lo-Dash from Underscore
 
 ###0.10.0
 - Update mongodb driver to 1.3.x
