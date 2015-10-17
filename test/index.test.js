@@ -455,7 +455,7 @@ exports['clear'] = {
         ], test.done);
     },
     
-    'clearing non-existent collections shouldnt error': function(test) {
+    'clearing non-existent collections shouldn\'t error': function(test) {
         loader.clear('fheruas', function(err) {
             test.ifError(err);
             
