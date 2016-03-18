@@ -74,7 +74,7 @@ var Loader = exports.Loader = function(dbOrUri, options) {
       safe: true
     }, options);
   }
-  
+
   this.options = options;
   this.modifiers = [];
 };
@@ -192,7 +192,7 @@ Loader.prototype.clear = function(collectionNames, cb) {
         async.forEach(results.collectionNames, function(name, cb) {
           var collection = results.db.collection(name);
 
-          collection.drop(cb);
+          collection.removeMany({}, cb);
         }, cb);
       } else { cb(); }
     }
