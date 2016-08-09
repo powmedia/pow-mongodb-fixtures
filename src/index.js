@@ -5,7 +5,7 @@ var fs       = require('fs'),
     mongo    = require('mongodb'),
     ObjectID = mongo.ObjectId,
     async    = require('async'),
-    _        = require('underscore'),
+    _        = require('lodash'),
     basePath = path.dirname(module.parent.filename);
 
 
@@ -32,7 +32,7 @@ exports.createObjectId = function(id) {
  */
 exports.connect = function(db, options) {
   return new Loader(db, options);
-}
+};
 
 
 
@@ -53,7 +53,7 @@ var Loader = exports.Loader = function(dbOrUri, options) {
 
   //Using connection URI
   if (parts.protocol) {
-    options = _.extend({
+    options = _.assign({
       db: parts.path.replace('/', ''),
       host: parts.hostname,
       port: parseInt(parts.port, 10),
@@ -65,7 +65,7 @@ var Loader = exports.Loader = function(dbOrUri, options) {
 
   //Using DB name
   else {
-    options = _.extend({
+    options = _.assign({
       db: dbOrUri,
       host: 'localhost',
       port: 27017,
@@ -400,7 +400,7 @@ var _mixedToObject = function(fixtures, cb) {
       _fileToObject(fixtures, cb);
     }
   });
-}
+};
 
 
 /**
@@ -419,7 +419,7 @@ var _fileToObject = function(file, cb) {
   var data = require(file);
 
   cb(null, data);
-}
+};
 
 
 /**
@@ -514,4 +514,4 @@ var _buildConnectionUri = function(options) {
   parts.push(options.db);
 
   return parts.join('');
-}
+};

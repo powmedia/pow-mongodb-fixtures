@@ -5,7 +5,7 @@ var fixtures = require('../src/index.js'),
 	mongo = require('mongodb'),
   fs = require('fs'),
 	async = require('async'),
-	_ = require('underscore');
+	_ = require('lodash');
 
 var dbName = 'pow-mongodb-fixtures-test',
 	loader = fixtures.connect(dbName),
@@ -85,7 +85,7 @@ exports['connect with dbName'] = function(test) {
   test.same(options.safe, true);
 
   test.done();
-}
+};
 
 
 exports['connect with uri'] = function(test) {
@@ -101,7 +101,7 @@ exports['connect with uri'] = function(test) {
   test.same(options.safe, true);
 
   test.done();
-}
+};
 
 
 exports['works when referencing an objectID in different scope'] = {
@@ -592,6 +592,6 @@ exports['exit'] =  {
         db.close(function() {
           process.exit();
         });
-      });
+      }, 10);
   }
-}
+};
