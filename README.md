@@ -192,6 +192,9 @@ Installation
 Changelog
 ---------
 
+###0.14.0
+- Update mongodb to 2.2.x
+
 ###0.13.0  
 - Update mongodb driver to 2.0.x  
 - Updated `collection.insert` with `collection.insertMany` - the former is marked for deprecation in version 3.x  
