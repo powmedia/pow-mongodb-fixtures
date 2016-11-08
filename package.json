@@ -2,7 +2,7 @@
   "author": "Charles Davison <charlie@powmedia.co.uk>",
   "name": "pow-mongodb-fixtures",
   "description": "Easy JSON fixture loading for MongoDB.  Makes managing document relationships easier.",
-  "version": "0.13.0",
+  "version": "0.14.0",
   "repository": {
     "type": "git",
     "url": "http://github.com/powmedia/pow-mongodb-fixtures.git"
@@ -15,11 +15,10 @@
   },
   "dependencies": {
     "async": "0.1.15",
-    "bson": ">=0.0.4",
-    "mongodb": "~2.0.36",
+    "mongodb": "~2.2.x",
     "nodeunit": "^0.9.1",
     "optimist": "0.3.5",
-    "lodash": "~3.10.0"
+    "underscore": "1.8.x"
   },
   "devDependencies": {
     "nodeunit": "^0.9.1"
