@@ -5,6 +5,7 @@ var fs       = require('fs'),
     mongo    = require('mongodb'),
     ObjectID = mongo.ObjectId,
     async    = require('async'),
+    glob     = require('glob'),
     _        = require('underscore'),
     basePath = path.dirname(module.parent.filename);
 
@@ -390,6 +391,11 @@ var _mixedToObject = function(fixtures, cb) {
   // Resolve relative paths if necessary.
   fixtures = path.resolve(basePath, fixtures);
 
+  // check if is a pattern
+  if(glob.hasMagic(fixtures)){
+    return _patternToObject(glob.sync(fixtures), cb);
+  }
+
   //Determine if fixtures is pointing to a file or directory
   fs.stat(fixtures, function(err, stats) {
     if (err) return cb(err);
@@ -402,6 +408,24 @@ var _mixedToObject = function(fixtures, cb) {
   });
 }
 
+/**
+ * Get data from pattern file as an object
+ *
+ * @param {Array}      List of full path to the file to load
+ * @param {Function}    Optional callback(err, data)
+ * @api private
+ */
+var _patternToObject = function(files, cb) {
+  cb = cb || noop;
+
+  var data = {};
+
+  files.map(function(file){
+    Object.assign(data, require(file));
+  });
+
+  cb(null, data);
+}
 
 /**
  * Get data from one file as an object
