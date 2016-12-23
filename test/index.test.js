@@ -276,8 +276,8 @@ exports['load'] = {
 	'pattern': function(test) {
         test.expect(2);
 
-		loader.load('./fixtures/*.js', function(err) {
-			if (err) return test.done(err);
+        loader.load('./fixtures/*.js', function(err) {
+            if (err) return test.done(err);
 
             async.parallel([
                 function(next) {
@@ -303,7 +303,7 @@ exports['load'] = {
                     });
                 }
             ], test.done);
-		});
+        });
 	},
 
 	'directory': {
