@@ -423,7 +423,7 @@ var _patternToObject = function(files, cb) {
   files.map(function(file){
       var filePath = require(file);
 
-      Object.keys(filePath).map(function(key){
+      Object.keys(filePath).map(function(key) {
           data[key] = filePath[key];
       });
   });
