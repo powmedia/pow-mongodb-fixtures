@@ -75,7 +75,7 @@ var Loader = exports.Loader = function(dbOrUri, options) {
       safe: true
     }, options);
   }
-  
+
   this.options = options;
   this.modifiers = [];
 };
@@ -421,7 +421,11 @@ var _patternToObject = function(files, cb) {
   var data = {};
 
   files.map(function(file){
-    Object.assign(data, require(file));
+      var filePath = require(file);
+
+      Object.keys(filePath).map(function(key){
+          data[key] = filePath[key];
+      });
   });
 
   cb(null, data);
