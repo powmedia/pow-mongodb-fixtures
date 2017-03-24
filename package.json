@@ -16,7 +16,6 @@
   "dependencies": {
     "async": "0.1.15",
     "mongodb": "~2.2.x",
-    "nodeunit": "^0.9.1",
     "optimist": "0.3.5",
     "underscore": "1.8.x"
   },
