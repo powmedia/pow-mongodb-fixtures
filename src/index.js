@@ -192,7 +192,7 @@ Loader.prototype.clear = function(collectionNames, cb) {
         async.forEach(results.collectionNames, function(name, cb) {
           var collection = results.db.collection(name);
 
-          collection.drop(cb);
+          collection.deleteMany({}, cb);
         }, cb);
       } else { cb(); }
     }
