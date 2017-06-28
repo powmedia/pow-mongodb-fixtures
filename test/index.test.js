@@ -372,31 +372,31 @@ exports['clear'] = {
     },
 
     'drops the db if collections not specified': function(test) {
-        async.series([
-            function(cb) {
-                loader.clear(cb);
-            },
-            
-            function(cb) {
-                loadCollection('archer', function(err, docs) {
-                    if (err) return cb(err);
+        try {
+            async.series([
+                function(cb) {
+                    loader.clear(cb);
+                },
+                function(cb) {
+                    loadCollection('archer', function(err, docs) {
+                        if (err) return cb(err);
 
-                    test.same(0, docs.length);
+                        test.same(0, docs.length);
+                        cb();
+                    });
+                },
+                function(cb) {
+                    loadCollection('southpark', function(err, docs) {
+                        if (err) return cb(err);
 
-                    cb();
-                });
-            },
-            
-            function(cb) {
-                loadCollection('southpark', function(err, docs) {
-                    if (err) return cb(err);
-
-                    test.same(0, docs.length);
-
-                    cb();
-                });
-            }
-        ], test.done);
+                        test.same(0, docs.length);
+                        cb();
+                    });
+                }
+            ], test.done);
+        } catch (e) {
+            test.done(e);
+        }
     },
 
     'clears a collection if called with a string': function(test) {
@@ -480,31 +480,31 @@ exports['clearAllAndLoad'] = {
             { name: 'Kyle' }
         ];
         
-        async.series([
-            function(cb) {
-                loader.clearAllAndLoad(data, cb);
-            },
-            
-            function(cb) {
-                loadCollection('archer', function(err, docs) {
-                    if (err) return cb(err);
+        try {
+            async.series([
+                function(cb) {
+                    loader.clearAllAndLoad(data, cb);
+                },
+                function(cb) {
+                    loadCollection('archer', function(err, docs) {
+                        if (err) return cb(err);
 
-                    test.same(0, docs.length);
+                        test.same(0, docs.length);
+                        cb();
+                    });
+                },
+                function(cb) {
+                    loadCollection('southpark', function(err, docs) {
+                        if (err) return cb(err);
 
-                    cb();
-                });
-            },
-            
-            function(cb) {
-                loadCollection('southpark', function(err, docs) {
-                    if (err) return cb(err);
-
-                    test.same(1, docs.length);
-
-                    cb();
-                });
-            }
-        ], test.done);
+                        test.same(1, docs.length);
+                        cb();
+                    });
+                }
+            ], test.done);
+        } catch (e) {
+            test.done(e);
+        }
     }
 };
 
