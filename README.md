@@ -109,6 +109,9 @@ Adds documents to the relevant collection. If the collection doesn't exist it wi
 
     //Directories (loads all files in the directory)
     fixtures.load(__dirname + '/fixtures', callback);
+    
+    //Pattern (loads all files with a patter)
+    fixtures.load(__dirname + '/fixtures/*.js', callback);
 
 
 clear(callback)
@@ -191,6 +194,9 @@ Installation
 
 Changelog
 ---------
+
+###0.15.0
+- Add suport search files for pattern
 
 ###0.14.0
 - Update mongodb to 2.2.x
