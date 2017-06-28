@@ -88,6 +88,22 @@ Usage:
       port: 1234
     });
 
+connect(callback)
+-----------------
+
+Close the connection to the DB
+
+Usage:
+
+    // Connect!
+    var fixtures = require('pow-mongodb-fixtures').connect('dbname');
+    
+    // Load some fixtures
+    fixtures.load(__dirname + '/fixtures/users.js', function(err) {
+        // Don't forget to close!
+    	fixtures.close(function(err) { ... });
+    });
+    
 
 load(data, callback)
 --------------------
