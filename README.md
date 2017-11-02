@@ -192,36 +192,36 @@ Installation
 Changelog
 ---------
 
-###0.14.0
+### 0.14.0
 - Update mongodb to 2.2.x
 
-###0.13.0  
+### 0.13.0  
 - Update mongodb driver to 2.0.x  
 - Updated `collection.insert` with `collection.insertMany` - the former is marked for deprecation in version 3.x  
 - Move to Lo-Dash from Underscore
 
-###0.10.0
+### 0.10.0
 - Update mongodb driver to 1.3.x
 - Add ability to connect with URI
 - Make safe mode the default
 
-###0.8.1
+### 0.8.1
 - Add mongofixtures CLI program
 
-###0.7.1
+### 0.7.1
 - Add 'safe' option (donnut)
 
-###0.7.0
+### 0.7.0
 - Add user and password options for connecting to authenticated/remote DBs
 
-###0.6.4
+### 0.6.4
 - Add username and password connect options
 
-###0.6.3
+### 0.6.3
 - Make clear be safe
 
-###0.6.2
+### 0.6.2
 - Windows fixes (samitny)
 
-###0.6.1
+### 0.6.1
 - Ignore subdirectories (hiddentao)
