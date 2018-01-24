@@ -8,6 +8,8 @@ var fs       = require('fs'),
     _        = require('underscore'),
     basePath = path.dirname(module.parent.filename);
 
+var MongoClient = mongo.MongoClient;
+var Server = mongo.Server;
 
 /**
  * Helper function that creates a MongoDB ObjectID given a hex string
@@ -54,7 +56,8 @@ var Loader = exports.Loader = function(dbOrUri, options) {
   //Using connection URI
   if (parts.protocol) {
     options = _.extend({
-      db: parts.path.replace('/', ''),
+      uri: dbOrUri,
+      db: parts.pathname.replace('/', ''),
       host: parts.hostname,
       port: parseInt(parts.port, 10),
       user: parts.auth ? parts.auth.split(':')[0] : null,
@@ -72,6 +75,9 @@ var Loader = exports.Loader = function(dbOrUri, options) {
       user: null,
       pass: null,
       safe: true
+    }, options);
+    options = _.extend({
+      uri: _buildConnectionUri(options)
     }, options);
   }
   
@@ -275,21 +281,14 @@ var _connect = function(loader, cb) {
 
   var options = loader.options;
 
-  var db = new mongo.Db(options.db, new mongo.Server(options.host, options.port, {}), {safe: options.safe});
-
-  db.open(function(err, db) {
+  MongoClient.connect(options.uri, function(err, client) {
     if (err) return cb(err);
 
+    let db = client.db(options.db);
     loader.client = db;
 
-    //Authenticate if required
-    if (!options.user) return cb(null, db);
+    cb(null, db);
 
-    db.authenticate(options.user, options.pass, function(err, result) {
-      if (err) return cb(err);
-
-      cb(null, db);
-    });
   });
 };
 
