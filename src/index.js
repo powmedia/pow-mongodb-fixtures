@@ -284,7 +284,7 @@ var _connect = function(loader, cb) {
   MongoClient.connect(options.uri, function(err, client) {
     if (err) return cb(err);
 
-    let db = client.db(options.db);
+    var db = client.db(options.db);
     loader.client = db;
 
     cb(null, db);
